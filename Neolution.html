@@ -50,6 +50,7 @@
     <button id="btnStart">Start</button>
     <button id="btnPause">Pause</button>
     <button id="btnRestart">Restart</button>
+    <button id="btnLoop">Loop: OFF</button>
     <label class="small">Offset (ms)
       <input id="offset" type="range" min="-250" max="250" value="0" step="1"/>
     </label>
@@ -86,6 +87,7 @@
     start: document.getElementById('btnStart'),
     pause: document.getElementById('btnPause'),
     restart: document.getElementById('btnRestart'),
+    loop: document.getElementById('btnLoop'),
     file: document.getElementById('file'),
     offset: document.getElementById('offset'),
     offsetLbl: document.getElementById('offsetLbl'),
@@ -104,6 +106,14 @@
     sidePanelMinimized = !sidePanelMinimized;
     ui.sidePanel.classList.toggle('minimized', sidePanelMinimized);
     ui.sidePanelToggle.textContent = sidePanelMinimized ? '◀' : '▶';
+  });
+
+  // Loop toggle
+  let loopEnabled = false;
+  ui.loop.addEventListener('click', () => {
+    loopEnabled = !loopEnabled;
+    ui.loop.textContent = loopEnabled ? 'Loop: ON' : 'Loop: OFF';
+    ui.loop.style.background = loopEnabled ? 'rgba(73,230,255,.25)' : 'rgba(9,7,18,.65)';
   });
 
   // --- resize ---
@@ -553,6 +563,16 @@
     playing = true;
     paused = false;
   }
+
+  // Audio end handler for looping
+  audioEl.addEventListener('ended', () => {
+    if (loopEnabled && playing) {
+      // Reset to start and loop seamlessly
+      audioEl.currentTime = 0;
+      clearNotesState();
+      audioEl.play().catch(e => console.error('Loop playback failed:', e));
+    }
+  });
 
   function pausePlayback(){
     audioEl.pause();
