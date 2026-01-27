@@ -285,6 +285,7 @@
   let playing = false;
   let paused = false;
   let chartReady = false;
+  let chartBuilding = false; // Lock to prevent concurrent builds
 
   let chartSeed = 123456;
   let notes = []; // {t,lane,hit:false,miss:false}
@@ -386,6 +387,8 @@
   }
 
   async function rebuildChartUsingDecodeIfPossible(sourceLabel, fromFile){
+    if (chartBuilding) return; // Skip if already building
+    chartBuilding = true;
     chartReady = false;
     setStatus('building chart...');
 
@@ -404,6 +407,7 @@
       const peaks = buildPeaksFromBuffer(buf);
       notes = buildDeterministicChart(peaks, buf.duration, sourceLabel + '|' + buf.length + '|' + buf.sampleRate);
       chartReady = true;
+      chartBuilding = false;
       setStatus(`chart ready: ${notes.length} notes  |  ${currentDiff().name}\n(If timing feels off, adjust Offset.)`);
     } catch (err){
       // Fallback: deterministic, duration-based.
@@ -418,6 +422,7 @@
       }
       notes = buildDeterministicChart(pseudoPeaks, dur, seedStr);
       chartReady = true;
+      chartBuilding = false;
       setStatus(
         'audio analysis blocked (likely file://).\n' +
         'Playback is fine, chart is deterministic fallback.\n' +
@@ -425,6 +430,8 @@
         `notes: ${notes.length}`
       );
       console.warn('Chart decode failed:', err);
+    } finally {
+      chartBuilding = false;
     }
   }
 
@@ -1056,11 +1063,22 @@
   ui.offsetLbl.textContent = ui.offset.value;
 
   ui.songSel.addEventListener('change', async () => {
-    try{ await loadSongFromDropdown(); }
-    catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
+    if (chartBuilding) return; // Ignore while building
+    try{ 
+      await loadSongFromDropdown();
+      // Ensure chart is marked ready even if decode failed (fallback was used)
+      if (!chartReady) chartReady = true;
+    }
+    catch(e){ 
+      // Fallback chart should exist, ensure it's ready
+      if (!chartReady) chartReady = true;
+      setError('audio error — ' + (e && e.message ? e.message : 'see console')); 
+      console.error(e); 
+    }
   });
 
   ui.diffSel.addEventListener('change', async () => {
+    if (chartBuilding) return; // Ignore while building
     // rebuild chart deterministically at new density
     try{
       if (songId === 'custom' && ui.file.files && ui.file.files[0]){
@@ -1095,7 +1113,17 @@
     try{
       await loadSongFromDropdown();
       updateScoreUI();
+      // Force chartReady to true so Start button works (even if decode failed, fallback was used)
+      if (!chartReady) {
+        chartReady = true;
+        setStatus('Chart using deterministic fallback (audio decode unavailable). Ready to play!');
+      }
     } catch(e){
+      // Even on error, ensure we have a playable chart
+      if (!chartReady) {
+        chartReady = true;
+        setStatus('Chart using deterministic fallback. Ready to play!');
+      }
       setError(e && e.message ? e.message : e);
       console.error(e);
     }
