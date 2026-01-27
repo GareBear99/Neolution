@@ -557,7 +557,8 @@
         setError('Chart is still building. Wait for it to finish (or choose a file for guaranteed analysis).');
         return;
       }
-      try{ await startPlayback(); }
+      // Start always restarts from beginning (same as Restart button)
+      try{ await restartPlayback(); }
       catch(e){
         setError(e && e.message ? e.message : e);
         console.error(e);
