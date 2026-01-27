@@ -18,7 +18,6 @@
 ## Features
 
 ### 🎵 Rhythm Gameplay
-- **3-Step Timed Interstitial:** 3s → 3s → 10s countdown before rhythm action
 - **8-Lane Rhythm Grid:** Arrow keys + WASD controls (dual input methods)
 - **Difficulty Levels:** Beginner (0) through Expert (4)
 - **Dynamic Chart Generation:** Deterministic charts built from audio analysis
