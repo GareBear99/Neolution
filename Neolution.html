@@ -57,7 +57,7 @@
   </div>
   <div class="small" style="margin-top:6px">
     Inputs: Arrow keys = neon arrows • WASD = neon symbols (W/A/S/D hit △/□/×/○ lanes) • Controller = D-pad (arrows) + PlayStation buttons (□ × ○ △)
-    <br/>Keys: <b>Space</b> start/stop • <b>Esc</b> reset • <b>H</b> toggle HUD
+    <br/>Keys: <b>Space</b> start/stop • <b>Esc</b> reset • <b>H</b> toggle HUD • <b>Tab</b> (when CapsLock active) toggle HUD
   </div>
   <div id="status"></div>
 </div>
@@ -101,6 +101,7 @@
   // --- input ---
   const keys = new Set();
   let hudVisible = true;
+  let capsLockActive = false;
 
   // Lane press feedback (yellow ring). Decays over time.
   const lanePress = new Float32Array(8);
@@ -109,7 +110,15 @@
   }
   window.addEventListener('keydown', (e) => {
     keys.add(e.code);
+    // Detect caps lock state
+    capsLockActive = e.getModifierState && e.getModifierState('CapsLock');
     if (e.code === 'KeyH'){
+      hudVisible = !hudVisible;
+      ui.hud.style.display = hudVisible ? 'block' : 'none';
+    }
+    // Tab toggles HUD when caps lock is active
+    if (e.code === 'Tab' && capsLockActive) {
+      e.preventDefault();
       hudVisible = !hudVisible;
       ui.hud.style.display = hudVisible ? 'block' : 'none';
     }
