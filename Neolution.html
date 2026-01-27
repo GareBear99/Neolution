@@ -407,7 +407,6 @@
       const peaks = buildPeaksFromBuffer(buf);
       notes = buildDeterministicChart(peaks, buf.duration, sourceLabel + '|' + buf.length + '|' + buf.sampleRate);
       chartReady = true;
-      chartBuilding = false;
       setStatus(`chart ready: ${notes.length} notes  |  ${currentDiff().name}\n(If timing feels off, adjust Offset.)`);
     } catch (err){
       // Fallback: deterministic, duration-based.
@@ -422,7 +421,6 @@
       }
       notes = buildDeterministicChart(pseudoPeaks, dur, seedStr);
       chartReady = true;
-      chartBuilding = false;
       setStatus(
         'audio analysis blocked (likely file://).\n' +
         'Playback is fine, chart is deterministic fallback.\n' +
