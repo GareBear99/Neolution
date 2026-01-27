@@ -1101,7 +1101,15 @@
     try{ await toggleStartStop(); }
     catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
   });
-  ui.pause.addEventListener('click', () => pausePlayback());
+  ui.pause.addEventListener('click', async () => {
+    if (playing) {
+      pausePlayback();
+    } else if (paused) {
+      // Resume from pause
+      try{ await startPlayback(); }
+      catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
+    }
+  });
   ui.restart.addEventListener('click', async () => {
     try{ await restartPlayback(); }
     catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
