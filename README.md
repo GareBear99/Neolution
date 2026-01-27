@@ -2,6 +2,13 @@
 
 **Neon Rhythm on a TRON grid — A CPU-light Canvas2D rhythm game**
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
+[![Live Game](https://img.shields.io/badge/Play%20Now-Live-brightgreen)](https://garebear99.github.io/Neolution/)
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support-yellow?style=flat&logo=buy-me-a-coffee)](https://buymeacoffee.com/garebear99)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-ff5e5b?style=flat&logo=ko-fi)](https://ko-fi.com/luciferai)
+[![Sponsor](https://img.shields.io/badge/Sponsor-❤️-red?style=flat&logo=github-sponsors)](https://github.com/sponsors/GareBear99)
+
 🎮 **Live:** [garebear99.github.io/Neolution](https://garebear99.github.io/Neolution/)
 
 ---
