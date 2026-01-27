@@ -51,6 +51,8 @@
     <button id="btnPause">Pause</button>
     <button id="btnRestart">Restart</button>
     <button id="btnLoop">Loop: OFF</button>
+    <button id="btnNewSeed">New Seed</button>
+    <button id="btnRandomSeed">Random Seed</button>
     <label class="small">Offset (ms)
       <input id="offset" type="range" min="-250" max="250" value="0" step="1"/>
     </label>
@@ -88,6 +90,8 @@
     pause: document.getElementById('btnPause'),
     restart: document.getElementById('btnRestart'),
     loop: document.getElementById('btnLoop'),
+    newSeed: document.getElementById('btnNewSeed'),
+    randomSeed: document.getElementById('btnRandomSeed'),
     file: document.getElementById('file'),
     offset: document.getElementById('offset'),
     offsetLbl: document.getElementById('offsetLbl'),
@@ -115,6 +119,29 @@
     ui.loop.textContent = loopEnabled ? 'Loop: ON' : 'Loop: OFF';
     ui.loop.style.background = loopEnabled ? 'rgba(73,230,255,.25)' : 'rgba(9,7,18,.65)';
   });
+
+  // Seed regeneration function - regenerates chart at current song position
+  async function regenerateChart(useRandom = false){
+    if (!chartReady) return;
+    const currentTime = audioEl.currentTime; // Preserve position in song
+    const seedStr = useRandom ? (songLabel + '|' + Math.random()) : (songLabel + '|' + Date.now());
+    const peaks = [];
+    const dur = isFinite(audioEl.duration) ? audioEl.duration : 180;
+    const rng = mulberry32(fnv1a(seedStr));
+    const step = lerp(0.52, 0.20, (parseInt(ui.diffSel.value,10)||1) / 4);
+    for (let t=1.0; t<dur-1.0; t += step){
+      if (rng() < 0.92) peaks.push({ t, e: 1 });
+    }
+    notes = buildDeterministicChart(peaks, dur, seedStr);
+    chartSeed = fnv1a(seedStr);
+    clearNotesState();
+    audioEl.currentTime = currentTime; // Jump back to where we were
+    setStatus(`New seed: ${chartSeed | 0} | Chart regenerated at ${currentTime.toFixed(2)}s`);
+  }
+
+  // Seed buttons
+  ui.newSeed.addEventListener('click', () => regenerateChart(false));
+  ui.randomSeed.addEventListener('click', () => regenerateChart(true));
 
   // --- resize ---
   function resize(){
