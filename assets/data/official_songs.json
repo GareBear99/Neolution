@@ -1,0 +1,35 @@
+[
+  {
+    "id": "speed_demon",
+    "title": "Speed Demon",
+    "file": "SpeedDemon.wav",
+    "artist": "Local Pack",
+    "lengthLabel": "Prototype Local Track",
+    "bpmLabel": "Auto-detected / generated",
+    "difficultyTags": ["Easy", "Normal", "Hard"],
+    "description": "Current included track for the release shell. Uses the existing deterministic auto-chart build.",
+    "status": "playable"
+  },
+  {
+    "id": "lost_sauce",
+    "title": "Lost Sauce",
+    "file": "LostSauce.mp3",
+    "artist": "Future Local Pack",
+    "lengthLabel": "Pending asset",
+    "bpmLabel": "TBD",
+    "difficultyTags": ["Easy", "Normal"],
+    "description": "Reserved official slot. Activate once the asset is added to the repo.",
+    "status": "reserved"
+  },
+  {
+    "id": "rize",
+    "title": "Rize",
+    "file": "Rize.mp3",
+    "artist": "Future Local Pack",
+    "lengthLabel": "Pending asset",
+    "bpmLabel": "TBD",
+    "difficultyTags": ["Normal", "Hard", "Expert"],
+    "description": "Reserved official slot for a future track pack or local soundtrack release.",
+    "status": "reserved"
+  }
+]

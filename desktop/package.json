@@ -1,0 +1,15 @@
+{
+  "name": "neolution-desktop",
+  "version": "0.2.0",
+  "private": true,
+  "main": "main.js",
+  "description": "Desktop wrapper scaffold for Neolution Steam vertical slice.",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "pack": "echo \"Hook electron-builder or forge here for Steam packaging.\""
+  },
+  "devDependencies": {
+    "electron": "^35.0.0"
+  }
+}
