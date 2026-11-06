@@ -1,6 +1,6 @@
 # Neo-VECTR ∞ Neolution
 
-**Neon Rhythm on a TRON grid — a CPU-light Canvas2D rhythm game moving toward a full desktop Steam release.**
+**Neon Rhythm on a TRON grid — a free, CPU-light Canvas2D rhythm game. Play the built-in track or drop in your own songs.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 [![JavaScript](https://img.shields.io/badge/Language-JavaScript-yellow?logo=javascript)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
@@ -11,48 +11,19 @@
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-ff5e5b?style=flat&logo=ko-fi)](https://ko-fi.com/luciferai)
 [![GitHub Sponsors](https://img.shields.io/badge/Sponsor-❤️-red?style=flat&logo=github-sponsors)](https://github.com/sponsors/GareBear99)
 
-🎮 **Live build:** [garebear99.github.io/Neolution](https://garebear99.github.io/Neolution/)
+🎮 **Live build:** [garebear99.github.io/Neolution](https://garebear99.github.io/Neolution/) — free to play.
 
 ---
 
 ## What Neolution is
 
-Neolution is an 8-lane neon rhythm game set on a TRON-style perspective grid. It focuses on:
+Neolution is an 8-lane neon rhythm game set on a TRON-style perspective grid. Hit the notes as they cross the red line — arrows with your arrow keys, symbols with WASD, taps on touch screens, or a gamepad. Every song gets a deterministic chart built from its own audio, and every chart has a **seed code** you can share: same code + same song + same difficulty = the exact same chart.
 
-- deterministic chart generation from audio
-- keyboard + controller support
-- lightweight Canvas2D rendering
-- sharp synthwave / arcade presentation
-- a future path toward a full desktop release with progression, persistence, achievements, and Steam packaging
-
----
-
-## Current feature set
-
-### Rhythm gameplay
-- **8-lane input matrix** using arrows + WASD
-- **Difficulty range 0–4**
-- **Deterministic chart generation** from audio analysis
-- **Gamepad support** with PlayStation-style lane mapping
-- **Looping and seed regeneration** for repeated runs
-
-### Visual systems
-- **TRON-style perspective grid**
-- **CPU-light Canvas2D renderer**
-- **Real-time spectrum analyzer**
-- **Waveform display**
-- **Layered neon glow compositing**
-
-### Audio systems
-- **Web Audio API analysis**
-- **Custom song upload**
-- **Playback timing offset slider**
-- **Realtime energy-based onset extraction**
-
-### Development surfaces
-- **Debug side panel**
-- **Immediate playable browser build**
-- **No dependency runtime**
+- **Free to play.** No purchase, no account. Ads appear only between songs (after every 3rd run) and never interrupt play.
+- **Your own songs.** Drop any MP3 / WAV / OGG / M4A / FLAC onto the game — it plays instantly and gets its own chart.
+- **Seed catalog.** A library of curated chart seeds (shareable codes) plus a seed input for your own codes — endless charts on any song.
+- **Judgement tiers.** Perfect / Great / Good / Miss, live accuracy, ranks (S/A/B/C/D), results screen, best scores saved on your device.
+- **Lightweight.** Pure HTML5 + Canvas2D, zero dependencies, ~3 MB total. Runs anywhere a browser runs.
 
 ---
 
@@ -68,9 +39,40 @@ Neolution is an 8-lane neon rhythm game set on a TRON-style perspective grid. It
 | Cross (×) | S / PS Cross |
 | Circle (○) | D / PS Circle |
 | Triangle (△) | W / PS Triangle |
+| Tap a lane | Touch / mouse |
 | Start / Stop | Space |
-| Restart | Esc |
+| Pause | Esc |
 | Toggle HUD | H |
+
+---
+
+## The built-in track
+
+**Neolution Theme** — 2:00, 128 BPM, an original high-energy synthwave track synthesized entirely from code (`tools/generate-theme-track.js`). No samples, no third-party audio, nothing of unknown provenance. Re-run the generator any time to reproduce it, then transcode with ffmpeg:
+
+```bash
+node tools/generate-theme-track.js /tmp/Neolution-Theme.wav
+ffmpeg -i /tmp/Neolution-Theme.wav -codec:a libmp3lame -b:a 192k Neolution-Theme.mp3
+```
+
+---
+
+## Seed catalog
+
+Charts are deterministic: a seed code fully determines the chart for a given song + difficulty. The curated catalog lives in `assets/data/seed_catalog.json` (the game also embeds a fallback copy, so it works over `file://` too). Type any code in the seed box to play that chart; hit **Copy seed** to share the chart you just played.
+
+---
+
+## Ads (AdSense)
+
+After every 3rd completed run, a break shows between songs — never mid-song. To enable real ads, paste your publisher ID and ad slot into the clearly-marked `CONFIG` block at the top of `index.html` (and the matching constants in `src/ui/release_shell.js`):
+
+```js
+ADSENSE_PUBLISHER_ID: 'ca-pub-XXXXXXXXXXXXXXXX',
+ADSENSE_AD_SLOT: '1234567890',
+```
+
+With both left blank (the default while AdSense is in admission), no ad script is loaded at all and the break shows a small support panel instead. The game works identically with ads blocked or failing to load — the break always has a working Continue button.
 
 ---
 
@@ -78,130 +80,79 @@ Neolution is an 8-lane neon rhythm game set on a TRON-style perspective grid. It
 
 ```text
 Neolution/
-├── index.html                    # Current main live build
-├── Neolution.html                # Alternate main game entry
-├── NeolutionGrid.html            # Grid explorer prototype
-├── NeolutionLayout.html          # Layout prototype
-├── SpeedDemon.wav                # Included local audio asset
-├── desktop/                      # Desktop wrapper scaffold
-│   ├── package.json
-│   ├── main.js
-│   ├── preload.js
-│   └── README.md
-├── docs/                         # Steam-readiness planning docs
-│   ├── STEAM_READY_PLAN.md
-│   └── RELEASE_CHECKLIST.md
-└── src/
-    ├── audio/
-    │   └── latency_calibrator.js
-    ├── engine/
-    │   └── score_engine.js
-    ├── leaderboards/
-    │   └── local_leaderboard.js
-    ├── progress/
-    │   └── unlock_manager.js
-    ├── save/
-    │   └── save_manager.js
-    └── ui/
-        └── results_screen_schema.js
+├── index.html                    # The game (itch entry point)
+├── Neolution-Theme.mp3           # Built-in original track (2.9 MB)
+├── assets/data/
+│   ├── official_songs.json       # Song registry (built-in track)
+│   └── seed_catalog.json         # Curated chart seed catalog
+├── release/
+│   └── Neolution_SteamVerticalSlice.html   # Menu shell (desktop/Steam path)
+├── src/ui/
+│   └── release_shell.js          # The shell's JS (menu, songs, settings, achievements, results, ads)
+├── tools/
+│   ├── generate-theme-track.js   # Synthesizes the built-in track from code
+│   └── build-itch.sh             # Assembles the itch-ready build in dist/itch/
+├── desktop/                      # Electron wrapper scaffold (loads the release shell)
+└── docs/                         # Steam-readiness planning docs
 ```
 
 ---
 
-## Steam-readiness direction
+## Release shell
 
-This package now includes a **production roadmap scaffold** for converting the current prototype into a full desktop game.
-
-Major required release pillars:
-
-1. **Structured front-end flow**
-   - title screen
-   - song select
-   - results screen
-   - settings menu
-
-2. **Rhythm judgement depth**
-   - perfect / great / good / miss windows
-   - clearer accuracy reporting
-   - rank outputs
-
-3. **Persistence**
-   - settings save
-   - offset save
-   - highscores
-   - progression unlocks
-
-4. **Desktop packaging**
-   - Electron wrapper
-   - local save path
-   - fullscreen support
-   - launchable Steam build base
-
-5. **Commercial content layer**
-   - official songs
-   - curated charts
-   - launch progression
-   - achievements
-
-See `docs/STEAM_READY_PLAN.md` and `docs/RELEASE_CHECKLIST.md`.
+The **Steam vertical slice shell** at `release/Neolution_SteamVerticalSlice.html` is the menu-driven front end: main menu, song select, settings, achievements, results, and the ad break. It loads the game in an iframe (`index.html?shell=1`) and talks to it via `postMessage` — the shell never touches the game's DOM. The desktop Electron wrapper loads the shell.
 
 ---
-
-
-## New release shell
-
-This package now ships with a **Steam vertical slice shell** at:
-
-```text
-release/Neolution_SteamVerticalSlice.html
-```
-
-It adds:
-- main menu
-- song select
-- persistent profile save
-- settings surface
-- achievements surface
-- results screen
-- desktop wrapper entry point
-
-Use this as the current presentation layer for demos, repo screenshots, and desktop packaging.
 
 ## Quick start
 
 ### Browser build
 
-Open `index.html` in a browser or host the folder on GitHub Pages.
+Open `index.html` in a browser or host the folder on GitHub Pages. For true soundwave charting (instead of the deterministic fallback), serve it over HTTP rather than `file://`:
+
+```bash
+python3 -m http.server 8000
+```
+
+### Itch build
+
+```bash
+./tools/build-itch.sh   # verifies + assembles dist/itch/ (~3 MB)
+```
+
+Zip `dist/itch/` and upload it as an HTML5 project (`index.html` is the entry point; recommended embed 960×540). Free to play.
 
 ### Desktop scaffold
 
-The desktop folder contains a starter Electron wrapper for turning the current build into a desktop app shell.
+The desktop folder contains a starter Electron wrapper for turning the current build into a desktop app shell. Packaging (installer, Steamworks) is a later track.
 
 ---
 
 ## Performance notes
 
-- Canvas2D only
-- no external runtime dependencies for the web build
-- suitable as a lightweight rhythm prototype base
-- desktop wrapper is scaffolded separately so the browser version remains simple
+- Canvas2D only, no external runtime dependencies for the web build
+- ~3 MB total download (was 70 MB+ with the old uncompressed WAV)
+- suitable as a lightweight rhythm game, not just a prototype base
 
 ---
 
 ## Roadmap snapshot
 
-### Current
-- Playable rhythm loop
-- Neon presentation
-- Audio-driven note generation
-- Keyboard + controller input
+### Done
+- Playable rhythm loop with judgement tiers, accuracy, ranks, results
+- Title screen, pause menu, song select
+- Custom song upload (file picker + drag & drop) + touch input
+- Seed catalog (shareable chart codes)
+- Best scores, settings, achievements, profile — all saved locally
+- Release shell restored (menu, songs, settings, achievements, results, ads)
+- Original built-in track (synthesized, clean provenance)
+- AdSense break after every 3rd run (configurable, graceful when unconfigured)
+- Itch-ready build (~3 MB)
 
-### Next production milestones
-- real save system integration
-- rank / judgement pass
-- results screen flow
-- official song pack structure
-- release UI pass
+### Next
+- Official song pack structure (more built-in tracks)
+- Handcrafted charts (in addition to generated ones)
+- Calibration mini-flow
 - Electron packaging + Steam prep
 
 ---
