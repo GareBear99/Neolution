@@ -3,38 +3,90 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-<title>Neo-VECTR's Neolution — Neon Rhythm on a TRON grid (CPU-light Canvas2D)</title>
+<title>Neolution — Neon Rhythm on a TRON grid</title>
+<meta name="description" content="Neolution is a free neon rhythm game on a TRON grid. Play the built-in track or drop in your own songs — every song gets a deterministic chart you can share by seed code."/>
 <style>
-  :root{--bg:#000;--hud:rgba(0,0,0,.42);--b:rgba(73,230,255,.18);--fg:rgba(220,240,255,.92)}
+  :root{--bg:#000;--hud:rgba(0,0,0,.42);--b:rgba(73,230,255,.18);--fg:rgba(220,240,255,.92);--accent:#49e6ff;--gold:#ffb14d;--good:#5effa3;--bad:#ff7c7c}
   html,body{margin:0;height:100%;background:var(--bg);overflow:hidden}
-  canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block}
+  canvas{position:fixed;inset:0;width:100vw;height:100vh;display:block;touch-action:none}
   #hud{position:fixed;left:12px;top:12px;z-index:5;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;color:var(--fg);background:var(--hud);border:1px solid var(--b);border-radius:14px;padding:10px 12px;backdrop-filter:blur(5px);max-width:min(900px,calc(100vw - 24px))}
   #hud .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   #hud b{font-weight:900;letter-spacing:.2px}
-  #hud select,#hud button,#hud input[type=range]{background:rgba(9,7,18,.65);border:1px solid rgba(73,230,255,.18);color:rgba(234,230,255,.95);border-radius:10px;padding:4px 8px;font:inherit}
+  #hud select,#hud button,#hud input[type=range],#hud input[type=text]{background:rgba(9,7,18,.65);border:1px solid rgba(73,230,255,.18);color:rgba(234,230,255,.95);border-radius:10px;padding:4px 8px;font:inherit}
   #hud button{cursor:pointer}
   #hud .small{opacity:.9}
   #hud #status{margin-top:8px;white-space:pre-wrap;opacity:.92}
   #score{position:fixed;right:14px;top:10px;z-index:5;color:rgba(230,245,255,.92);font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;text-align:right;text-shadow:0 0 12px rgba(120,240,255,.22)}
   #filePick{display:inline-flex;gap:8px;align-items:center}
-  #sidePanel{position:fixed;right:0;top:0;height:100vh;width:320px;background:var(--hud);border-left:1px solid var(--b);z-index:4;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;color:var(--fg);overflow-y:auto;backdrop-filter:blur(5px);transition:transform 0.3s ease;transform:translateX(0)}
-  #sidePanel.minimized{transform:translateX(100%)}
-  #sidePanelToggle{position:fixed;right:320px;top:12px;z-index:6;width:24px;height:40px;background:rgba(9,7,18,.65);border:1px solid rgba(73,230,255,.18);border-right:none;border-radius:10px 0 0 10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(73,230,255,.85);font-weight:bold;user-select:none;transition:right 0.3s ease}
+  #sidePanel{position:fixed;right:0;top:0;height:100vh;width:320px;background:var(--hud);border-left:1px solid var(--b);z-index:4;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;color:var(--fg);overflow-y:auto;backdrop-filter:blur(5px);transition:transform 0.3s ease;transform:translateX(100%)}
+  #sidePanel.open{transform:translateX(0)}
+  #sidePanelToggle{position:fixed;right:0;top:12px;z-index:6;width:24px;height:40px;background:rgba(9,7,18,.65);border:1px solid rgba(73,230,255,.18);border-right:none;border-radius:10px 0 0 10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(73,230,255,.85);font-weight:bold;user-select:none}
+  #sidePanel.open ~ #sidePanelToggle{right:320px}
   #sidePanelToggle:hover{background:rgba(9,7,18,.85)}
-  #sidePanel.minimized ~ #sidePanelToggle{right:0}
   #sidePanelContent{padding:16px;white-space:pre-wrap;opacity:.92}
+  #progressBar{position:fixed;left:0;top:0;height:3px;width:100%;z-index:6;background:rgba(73,230,255,.08)}
+  #progressFill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--gold));box-shadow:0 0 10px rgba(73,230,255,.6)}
+  /* --- overlays (title / results / pause / ad) --- */
+  .overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 30%,rgba(10,18,48,.88),rgba(0,0,0,.94));overflow:auto}
+  .overlay.hidden{display:none}
+  /* Global: every classList 'hidden' toggle in the game means "not displayed".
+     (Was overlay-only, so the results badges — plain spans, not overlays —
+     showed unconditionally: FULL COMBO appeared on a 16-miss run.) */
+  .hidden{display:none !important}
+  .panel{width:min(860px,100%);background:linear-gradient(180deg,rgba(10,12,24,.92),rgba(8,10,18,.96));border:1px solid var(--b);border-radius:24px;box-shadow:0 0 60px rgba(79,224,255,.12);padding:28px;color:var(--fg);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+  .panel h1{margin:0 0 4px;font-size:52px;line-height:1;font-weight:900;letter-spacing:.02em;background:linear-gradient(90deg,#49e6ff,#ff5ae6,#ffb14d);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .panel h2{margin:0 0 8px;font-size:28px;font-weight:900}
+  .panel .sub{color:rgba(194,214,235,.85);margin:0 0 18px;line-height:1.5}
+  .panel .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:10px 0}
+  .panel label{font-size:13px;color:rgba(194,214,235,.85)}
+  .panel select,.panel input[type=text],.panel input[type=file]{background:rgba(8,12,22,.88);border:1px solid var(--b);color:var(--fg);border-radius:12px;padding:10px 12px;font:inherit}
+  .panel button{cursor:pointer;border:1px solid var(--b);background:rgba(8,12,22,.88);color:var(--fg);border-radius:14px;padding:12px 18px;font:inherit;font-weight:700}
+  .panel button.primary{background:linear-gradient(180deg,rgba(77,226,255,.22),rgba(77,226,255,.08));box-shadow:0 0 24px rgba(77,226,255,.15)}
+  .panel button.gold{background:linear-gradient(180deg,rgba(255,177,69,.2),rgba(255,177,69,.08));border-color:rgba(255,177,69,.35)}
+  .panel button:hover{filter:brightness(1.1)}
+  .diffPills{display:flex;gap:8px;flex-wrap:wrap}
+  .diffPills button{padding:9px 13px;border-radius:999px;font-weight:700}
+  .diffPills button.active{border-color:var(--gold);box-shadow:0 0 16px rgba(255,177,69,.25);color:#ffe1b0}
+  .dropzone{border:2px dashed rgba(73,230,255,.35);border-radius:16px;padding:18px;text-align:center;color:rgba(194,214,235,.9);cursor:pointer}
+  .dropzone:hover,.dropzone.over{border-color:var(--accent);background:rgba(73,230,255,.06)}
+  .seedGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin:8px 0}
+  .seedCard{background:rgba(18,22,38,.85);border:1px solid var(--b);border-radius:14px;padding:10px 12px;cursor:pointer}
+  .seedCard:hover{border-color:rgba(87,232,255,.45)}
+  .seedCard.active{border-color:rgba(255,177,69,.6);box-shadow:0 0 16px rgba(255,177,69,.15)}
+  .seedCard b{display:block;font-size:14px}
+  .seedCard code{color:var(--accent);font-size:12px}
+  .seedCard span{display:block;font-size:12px;color:rgba(194,214,235,.8);margin-top:4px}
+  .keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;font-size:13px;color:rgba(194,214,235,.9)}
+  .keys b{color:var(--fg)}
+  .rankBig{font-size:72px;font-weight:900;line-height:1}
+  .statGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+  .stat{background:rgba(18,22,38,.85);border:1px solid var(--b);border-radius:14px;padding:12px;text-align:center}
+  .stat h3{margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:rgba(194,214,235,.75)}
+  .stat .v{font-size:24px;font-weight:800}
+  .tierRow{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;margin:6px 0}
+  .tierRow b.perfect{color:#7df9ff}.tierRow b.great{color:var(--good)}.tierRow b.good{color:var(--gold)}.tierRow b.miss{color:var(--bad)}
+  .newBest{display:inline-block;background:rgba(255,177,69,.18);border:1px solid rgba(255,177,69,.5);color:#ffe1b0;border-radius:999px;padding:4px 12px;font-weight:800;font-size:13px;margin-left:8px}
+  #judgePop{position:fixed;left:50%;top:58%;transform:translateX(-50%);z-index:8;pointer-events:none;font:900 30px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.08em;text-shadow:0 0 18px rgba(120,240,255,.5);opacity:0}
+  #comboPop{position:fixed;left:50%;top:64%;transform:translateX(-50%);z-index:8;pointer-events:none;font:800 16px/1 ui-sans-serif,system-ui,sans-serif;color:rgba(230,245,255,.9);text-shadow:0 0 12px rgba(120,240,255,.4);opacity:0}
+  .fine{font-size:12px;color:rgba(194,214,235,.7);line-height:1.5}
+  #adBox{min-height:250px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);border:1px solid var(--b);border-radius:14px;margin:12px 0;overflow:hidden}
+  #adBox .support{text-align:center;padding:20px;color:rgba(194,214,235,.9);line-height:1.6}
+  #adBox .support a{color:var(--accent)}
+  @media (max-width:700px){.panel h1{font-size:38px}.statGrid{grid-template-columns:1fr 1fr}.panel{padding:18px}}
 </style>
 </head>
 <body>
-<canvas id="sim" aria-label="Neo-VECTR's Neolution rhythm grid"></canvas>
+<canvas id="sim" aria-label="Neolution rhythm grid"></canvas>
+<div id="progressBar"><div id="progressFill"></div></div>
+<div id="judgePop"></div>
+<div id="comboPop"></div>
+
 <div id="hud">
-<div class="row" style="margin-bottom:6px"><b>Neo-VECTR's Neolution</b> — Neon Rhythm on a TRON grid (CPU-light Canvas2D)</div>
+<div class="row" style="margin-bottom:6px"><b>Neolution</b> <span class="small">— Neon Rhythm on a TRON grid</span></div>
   <div class="row">
     <label class="small">Song
       <select id="songSel">
-        <option value="SpeedDemon.wav" selected>Speed Demon (wav)</option>
-        <option value="LostSauce.mp3">LostSauce (mp3)</option>
-        <option value="Rize.mp3">Rize (mp3)</option>
+        <option value="Neolution-Theme.mp3" selected>Neolution Theme</option>
       </select>
     </label>
     <label class="small">Difficulty
@@ -50,34 +102,176 @@
     <button id="btnPause">Pause</button>
     <button id="btnRestart">Restart</button>
     <button id="btnLoop">Loop: OFF</button>
-    <button id="btnNewSeed">New Seed</button>
-    <button id="btnRandomSeed">Random Seed</button>
+    <button id="btnMenu">Menu</button>
     <label class="small">Offset (ms)
-      <input id="offset" type="range" min="-250" max="250" value="0" step="1"/>
+      <input id="offset" type="range" min="-250" max="250" value="0" step="1" style="width:70px"/>
     </label>
     <span class="small" id="offsetLbl">0</span>
+    <label class="small">Vol <input id="vol" type="range" min="0" max="100" value="80" step="1" style="width:70px"/></label>
   </div>
   <div class="row" style="margin-top:6px">
     <span id="filePick">
       <input id="file" type="file" accept="audio/*"/>
-      <span class="small">(custom song)</span>
+      <span class="small">(your own song)</span>
     </span>
+    <label class="small">Seed <input id="seedInput" type="text" placeholder="e.g. NEON-RUSH" style="width:110px"/></label>
+    <button id="btnApplySeed">Apply seed</button>
+    <button id="btnCopySeed" title="Copy this chart's seed code">Copy seed</button>
+    <span class="small" id="seedLbl">seed: —</span>
   </div>
   <div class="small" style="margin-top:6px">
-    Inputs: Arrow keys = neon arrows • WASD = neon symbols (W/A/S/D hit △/□/×/○ lanes) • Controller = D-pad (arrows) + PlayStation buttons (□ × ○ △)
-    <br/>Keys: <b>Space</b> start/stop • <b>Esc</b> reset • <b>H</b> toggle HUD • <b>Tab</b> (when CapsLock active) toggle HUD
+    Inputs: Arrow keys = neon arrows • WASD = neon symbols (W/A/S/D hit △/□/×/○ lanes) • Tap a lane on touch • Controller = D-pad (arrows) + PlayStation buttons (□ × ○ △)
+    <br/>Keys: <b>Space</b> start/stop • <b>Esc</b> pause • <b>H</b> toggle HUD • <b>Tab</b> (when CapsLock active) toggle HUD
   </div>
   <div id="status"></div>
 </div>
-<div id="score"><div>Score <span id="scoreVal">0</span></div><div>Combo x<span id="comboVal">0</span></div></div>
+<div id="score"><div>Score <span id="scoreVal">0</span></div><div>Combo x<span id="comboVal">0</span></div><div>Acc <span id="accVal">—</span></div></div>
 <div id="sidePanel">
   <div id="sidePanelContent">DEBUG PANEL</div>
 </div>
-<div id="sidePanelToggle">▶</div>
+<div id="sidePanelToggle" title="Debug panel">▶</div>
+
+<!-- TITLE / START SCREEN -->
+<div class="overlay" id="titleScreen">
+  <div class="panel">
+    <h1>NEOLUTION</h1>
+    <p class="sub">A free neon rhythm game on a TRON grid. Hit the notes as they cross the red line — arrows with your arrow keys, symbols with WASD, taps on touch, or a gamepad. Play the built-in track, or drop in <b>your own songs</b>: every song gets a chart, and every chart has a seed code you can share.</p>
+    <div class="row">
+      <div style="flex:1;min-width:220px">
+        <label>Track</label>
+        <div class="seedCard active" style="cursor:default">
+          <b>🎵 Neolution Theme</b>
+          <code>Original • 128 BPM • 2:00</code>
+          <span>Built-in track, synthesized for this game. No samples, no licence worries.</span>
+        </div>
+      </div>
+      <div style="flex:1;min-width:220px">
+        <label>Difficulty</label>
+        <div class="diffPills" id="titleDiff">
+          <button data-diff="0">Beginner</button>
+          <button data-diff="1" class="active">Easy</button>
+          <button data-diff="2">Normal</button>
+          <button data-diff="3">Hard</button>
+          <button data-diff="4">Expert</button>
+        </div>
+        <div class="fine" style="margin-top:6px">Best on this track: <span id="titleBest">—</span></div>
+      </div>
+    </div>
+    <div class="row">
+      <div style="flex:1;min-width:260px">
+        <label>Your own song</label>
+        <div class="dropzone" id="dropzone">Drop an audio file here, or click to choose one<br/><span class="fine">MP3 / WAV / OGG — it plays instantly and gets its own chart</span></div>
+        <input id="fileTitle" type="file" accept="audio/*" style="display:none"/>
+      </div>
+    </div>
+    <div class="row">
+      <div style="flex:1;min-width:260px">
+        <label>Seed catalog — same code + same song = same chart. Share codes with friends.</label>
+        <div class="seedGrid" id="seedGrid"></div>
+        <div class="row">
+          <input id="seedInputTitle" type="text" placeholder="Type a seed code, e.g. NEON-RUSH" style="flex:1;min-width:160px"/>
+          <button id="btnApplySeedTitle">Apply seed</button>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <button class="primary" id="btnPlay" style="font-size:18px;padding:14px 34px">▶ &nbsp;Play</button>
+      <span class="fine" id="titleStatus">Loading track…</span>
+    </div>
+    <div class="keys">
+      <div><b>← ↓ ↑ →</b> arrow lanes</div>
+      <div><b>W A S D</b> symbol lanes △ □ × ○</div>
+      <div><b>Tap</b> a lane on touch screens</div>
+      <div><b>Gamepad</b> D-pad + □ × ○ △</div>
+      <div><b>Space</b> start / stop</div>
+      <div><b>Esc</b> pause</div>
+    </div>
+    <p class="fine" style="margin-top:14px">Free to play. Best scores are saved on this device. After every 3rd run you may see an ad — it keeps the game free, and it never interrupts a song.</p>
+  </div>
+</div>
+
+<!-- RESULTS SCREEN -->
+<div class="overlay hidden" id="resultsScreen">
+  <div class="panel">
+    <h2>Results <span id="newBestBadge" class="newBest hidden">NEW BEST!</span></h2>
+    <p class="sub"><span id="resultTrack">—</span> • <span id="resultDiff">—</span> • seed <code id="resultSeed" style="color:var(--accent)">—</code></p>
+    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+      <div class="rankBig" id="resultRank">—</div>
+      <div>
+        <div class="tierRow">
+          <span><b class="perfect">PERFECT</b> <span id="cPerfect">0</span></span>
+          <span><b class="great">GREAT</b> <span id="cGreat">0</span></span>
+          <span><b class="good">GOOD</b> <span id="cGood">0</span></span>
+          <span><b class="miss">MISS</b> <span id="cMiss">0</span></span>
+        </div>
+        <div class="tierRow"><span id="fcBadge" class="hidden" style="color:var(--gold);font-weight:800">★ FULL COMBO ★</span></div>
+      </div>
+    </div>
+    <div class="statGrid">
+      <div class="stat"><h3>Score</h3><div class="v" id="resultScore">0</div></div>
+      <div class="stat"><h3>Accuracy</h3><div class="v" id="resultAcc">—</div></div>
+      <div class="stat"><h3>Max Combo</h3><div class="v" id="resultCombo">0</div></div>
+      <div class="stat"><h3>Notes</h3><div class="v" id="resultNotes">0</div></div>
+    </div>
+    <div class="row">
+      <button class="primary" id="btnAgain">↻ Play again</button>
+      <button class="gold" id="btnCopySeedResults">Copy seed</button>
+      <button id="btnToTitle">Song select</button>
+    </div>
+    <p class="fine">Share this chart: <code id="resultSeedShare" style="color:var(--accent)">—</code> — anyone with the same song and this code plays the exact same chart.</p>
+  </div>
+</div>
+
+<!-- PAUSE SCREEN -->
+<div class="overlay hidden" id="pauseScreen">
+  <div class="panel" style="max-width:520px;text-align:center">
+    <h2>Paused</h2>
+    <p class="sub">Take a breath. The grid waits.</p>
+    <div class="row" style="justify-content:center">
+      <button class="primary" id="btnResume">Resume</button>
+      <button id="btnRestartPause">Restart song</button>
+      <button id="btnQuitTitle">Quit to menu</button>
+    </div>
+  </div>
+</div>
+
+<!-- AD MODAL (after every 3rd run, between runs only) -->
+<div class="overlay hidden" id="adModal">
+  <div class="panel" style="max-width:560px;text-align:center">
+    <h2 style="font-size:22px">Thanks for playing Neolution</h2>
+    <p class="sub">Ads keep this game free. This one shows between songs — never while you play.</p>
+    <div id="adBox"></div>
+    <div class="row" style="justify-content:center">
+      <button class="primary" id="btnAdContinue">Continue</button>
+    </div>
+  </div>
+</div>
 
 <script>
 (() => {
   'use strict';
+
+  // =====================================================================
+  // CONFIG — the one place to change game-wide settings.
+  // ---------------------------------------------------------------------
+  // ADSENSE: paste your publisher ID and ad slot to enable ads.
+  //   ADSENSE_PUBLISHER_ID: 'ca-pub-XXXXXXXXXXXXXXXX' (from AdSense)
+  //   ADSENSE_AD_SLOT:      '1234567890'             (your ad unit's slot)
+  // Leave both '' while AdSense is in admission: the game runs exactly
+  // the same, no ad script is loaded, and the after-3-runs break simply
+  // shows a small support panel instead. Nothing breaks when ads are
+  // blocked or fail to load.
+  // =====================================================================
+  const CONFIG = {
+    ADSENSE_PUBLISHER_ID: '',
+    ADSENSE_AD_SLOT: '',
+    RUNS_BETWEEN_ADS: 3,
+    SUPPORT_LINKS: {
+      kofi: 'https://ko-fi.com/luciferai',
+      coffee: 'https://buymeacoffee.com/garebear99',
+      sponsors: 'https://github.com/sponsors/GareBear99'
+    }
+  };
 
   const canvas = document.getElementById('sim');
   const ctx = canvas.getContext('2d', { alpha:false, desynchronized:true });
@@ -89,58 +283,94 @@
     pause: document.getElementById('btnPause'),
     restart: document.getElementById('btnRestart'),
     loop: document.getElementById('btnLoop'),
-    newSeed: document.getElementById('btnNewSeed'),
-    randomSeed: document.getElementById('btnRandomSeed'),
-    file: document.getElementById('file'),
+    menu: document.getElementById('btnMenu'),
+    vol: document.getElementById('vol'),
     offset: document.getElementById('offset'),
     offsetLbl: document.getElementById('offsetLbl'),
+    file: document.getElementById('file'),
+    seedInput: document.getElementById('seedInput'),
+    applySeed: document.getElementById('btnApplySeed'),
+    copySeed: document.getElementById('btnCopySeed'),
+    seedLbl: document.getElementById('seedLbl'),
     status: document.getElementById('status'),
     scoreVal: document.getElementById('scoreVal'),
     comboVal: document.getElementById('comboVal'),
+    accVal: document.getElementById('accVal'),
     hud: document.getElementById('hud'),
     sidePanel: document.getElementById('sidePanel'),
     sidePanelToggle: document.getElementById('sidePanelToggle'),
-    sidePanelContent: document.getElementById('sidePanelContent')
+    sidePanelContent: document.getElementById('sidePanelContent'),
+    progressFill: document.getElementById('progressFill'),
+    judgePop: document.getElementById('judgePop'),
+    comboPop: document.getElementById('comboPop'),
+    titleScreen: document.getElementById('titleScreen'),
+    titleDiff: document.getElementById('titleDiff'),
+    titleBest: document.getElementById('titleBest'),
+    titleStatus: document.getElementById('titleStatus'),
+    dropzone: document.getElementById('dropzone'),
+    fileTitle: document.getElementById('fileTitle'),
+    seedGrid: document.getElementById('seedGrid'),
+    seedInputTitle: document.getElementById('seedInputTitle'),
+    applySeedTitle: document.getElementById('btnApplySeedTitle'),
+    playBtn: document.getElementById('btnPlay'),
+    resultsScreen: document.getElementById('resultsScreen'),
+    pauseScreen: document.getElementById('pauseScreen'),
+    adModal: document.getElementById('adModal'),
+    adBox: document.getElementById('adBox')
   };
 
-  // Side panel toggle
-  let sidePanelMinimized = false;
-  ui.sidePanelToggle.addEventListener('click', () => {
-    sidePanelMinimized = !sidePanelMinimized;
-    ui.sidePanel.classList.toggle('minimized', sidePanelMinimized);
-    ui.sidePanelToggle.textContent = sidePanelMinimized ? '◀' : '▶';
-  });
+  const qs = new URLSearchParams(location.search);
+  const shellMode = qs.get('shell') === '1'; // embedded in the release shell: shell is the menu
 
-  // Loop toggle
-  let loopEnabled = false;
-  ui.loop.addEventListener('click', () => {
-    loopEnabled = !loopEnabled;
-    ui.loop.textContent = loopEnabled ? 'Loop: ON' : 'Loop: OFF';
-    ui.loop.style.background = loopEnabled ? 'rgba(73,230,255,.25)' : 'rgba(9,7,18,.65)';
-  });
-
-  // Seed regeneration function - regenerates chart at current song position
-  async function regenerateChart(useRandom = false){
-    if (!chartReady) return;
-    const currentTime = audioEl.currentTime; // Preserve position in song
-    const seedStr = useRandom ? (songLabel + '|' + Math.random()) : (songLabel + '|' + Date.now());
-    const peaks = [];
-    const dur = isFinite(audioEl.duration) ? audioEl.duration : 180;
-    const rng = mulberry32(fnv1a(seedStr));
-    const step = lerp(0.52, 0.20, (parseInt(ui.diffSel.value,10)||1) / 4);
-    for (let t=1.0; t<dur-1.0; t += step){
-      if (rng() < 0.92) peaks.push({ t, e: 1 });
+  // --- local persistence (one namespace, versioned keys) ---
+  const store = {
+    get(key, fallback) {
+      try { const v = localStorage.getItem('neolution.' + key); return v === null ? fallback : JSON.parse(v); }
+      catch (_) { return fallback; }
+    },
+    set(key, value) {
+      try { localStorage.setItem('neolution.' + key, JSON.stringify(value)); } catch (_) {}
     }
-    notes = buildDeterministicChart(peaks, dur, seedStr);
-    chartSeed = fnv1a(seedStr);
-    clearNotesState();
-    audioEl.currentTime = currentTime; // Jump back to where we were
-    setStatus(`New seed: ${chartSeed | 0} | Chart regenerated at ${currentTime.toFixed(2)}s`);
+  };
+  const settings = Object.assign({ difficulty: 1, offset: 0, loop: false, volume: 80, lastSeed: '', hudMode: 'full' }, store.get('settings.v1', {}));
+  let bests = store.get('bests.v1', {});           // key: song|diff -> {score, acc, rank}
+  let stats = store.get('stats.v1', { runs: 0, perfectHits: 0, tracksCleared: 0, seedsPlayed: [] });
+  let achievements = store.get('achievements.v1', {}); // id -> true
+  let adRuns = store.get('adRuns.v1', 0);           // completed runs since the last ad
+
+  function saveAll() {
+    store.set('settings.v1', settings);
+    store.set('bests.v1', bests);
+    store.set('stats.v1', stats);
+    store.set('achievements.v1', achievements);
+    store.set('adRuns.v1', adRuns);
   }
 
-  // Seed buttons
-  ui.newSeed.addEventListener('click', () => regenerateChart(false));
-  ui.randomSeed.addEventListener('click', () => regenerateChart(true));
+  const ACHIEVEMENTS = {
+    'first-clear':   { name: 'First Clear',   desc: 'Finish a song.' },
+    'combo-50':      { name: 'Warming Up',    desc: 'Reach a 50 combo.' },
+    'combo-100':     { name: 'On Fire',       desc: 'Reach a 100 combo.' },
+    'rank-s':        { name: 'S Rank',        desc: 'Earn an S rank on any run.' },
+    'full-combo':    { name: 'Full Combo',    desc: 'Clear a song with zero misses.' },
+    'seed-explorer': { name: 'Seed Explorer', desc: 'Play 3 different seed codes.' },
+    'custom-track':  { name: 'Your Track',    desc: 'Play a song you uploaded yourself.' },
+    'accuracy-95':   { name: 'Pinpoint',      desc: 'Finish a run at 95% accuracy or better.' }
+  };
+  function unlockAchievement(id) {
+    if (achievements[id]) return;
+    achievements[id] = true; saveAll();
+    toast(`🏆 Achievement: ${ACHIEVEMENTS[id].name}`);
+    postToParent({ type: 'neolution:achievement', id });
+  }
+  let toastTimer = null;
+  function toast(msg) {
+    const el = document.createElement('div');
+    el.textContent = msg;
+    el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;background:rgba(8,12,22,.92);border:1px solid rgba(255,177,69,.5);color:#ffe1b0;padding:10px 18px;border-radius:999px;font:700 14px ui-sans-serif,system-ui,sans-serif;box-shadow:0 0 24px rgba(255,177,69,.2)';
+    document.body.appendChild(el);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.remove(), 3500);
+  }
 
   // --- resize ---
   function resize(){
@@ -165,34 +395,41 @@
   function markLanePressed(lane){
     if (lane >= 0 && lane < lanePress.length) lanePress[lane] = 1.0;
   }
+  function isFormTarget(e){
+    const t = e.target;
+    return t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA');
+  }
   window.addEventListener('keydown', (e) => {
     keys.add(e.code);
-    // Detect caps lock state
     capsLockActive = e.getModifierState && e.getModifierState('CapsLock');
-    if (e.code === 'KeyH'){
+    if (e.code === 'KeyH' && !isFormTarget(e)){
       hudVisible = !hudVisible;
       ui.hud.style.display = hudVisible ? 'block' : 'none';
     }
-    // Tab toggles HUD when caps lock is active
     if (e.code === 'Tab' && capsLockActive) {
       e.preventDefault();
       hudVisible = !hudVisible;
       ui.hud.style.display = hudVisible ? 'block' : 'none';
     }
-    if (e.code === 'Space') toggleStartStop();
-    if (e.code === 'Escape') hardReset();
+    if (isFormTarget(e)) return; // typing in a field: never treat keys as game input
+    if (e.code === 'Space'){ e.preventDefault(); toggleStartStop(); }
+    if (e.code === 'Escape'){ togglePause(); }
+    if (e.code.startsWith('Arrow')) e.preventDefault();
   });
   window.addEventListener('keyup', (e) => keys.delete(e.code));
+  // Clicking a HUD control focuses it; blur it so Space/arrows stay game keys.
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t && (t.tagName === 'BUTTON' || t.tagName === 'SELECT')) t.blur();
+  });
 
   // --- hit tones (arrows vs symbols) ---
   function playHitTone(lane, strength){
-    // strength: 0..1
     try{
       if (!audioCtx) return;
       const t0 = audioCtx.currentTime;
       const o = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      // Different timbres so WASD feels distinct.
       const isSymbol = lane >= 4;
       o.type = isSymbol ? 'triangle' : 'square';
       const base = isSymbol ? 330 : 660;
@@ -216,7 +453,6 @@
   let mediaSrc = null;
   const audioEl = new Audio();
   audioEl.preload = 'auto';
-  // crossOrigin can break file:// playback in some browsers; only set it on http(s).
   try{
     if (location && (location.protocol === 'http:' || location.protocol === 'https:')){
       audioEl.crossOrigin = 'anonymous';
@@ -225,7 +461,7 @@
 
   let waveform = new Uint8Array(1024);
   let freqData = null;
-  let spectrumBinsStep = 3; // draw every Nth bin (perf)
+  let spectrumBinsStep = 3;
   let spectrumInfo = { on:false, peakHz:0, peakMag:0, err:'' };
 
   function ensureAudioGraph(){
@@ -252,10 +488,6 @@
     }
   }
 
-  // Deterministic chart build from decoded audio when possible.
-  // We prefer decoding from File input (reliable). For dropdown songs under file://,
-  // browsers sometimes block fetch/decode; playback still works, but charting may fall back.
-
   function fnv1a(str){
     let h = 2166136261 >>> 0;
     for (let i=0;i<str.length;i++){
@@ -278,12 +510,10 @@
   async function decodeForChartFromFile(file){
     const ab = await file.arrayBuffer();
     ensureAudioGraph();
-    // decode in AudioContext (not Offline) for widest support
     const buf = await audioCtx.decodeAudioData(ab.slice(0));
     return buf;
   }
 
-  // Cheap onset-like peak detection (time-domain energy + local maxima)
   function buildPeaksFromBuffer(buf){
     const ch = buf.getChannelData(0);
     const sr = buf.sampleRate;
@@ -295,7 +525,6 @@
       for (let j=0;j<win;j++) e += Math.abs(ch[i+j]);
       energies.push(e / win);
     }
-    // adaptive threshold
     let mean = 0;
     for (const e of energies) mean += e;
     mean /= Math.max(1, energies.length);
@@ -309,7 +538,6 @@
         peaks.push({ t, e });
       }
     }
-    // If too few peaks (quiet track), drop threshold
     if (peaks.length < 120){
       thresh = mean * 1.15;
       peaks.length = 0;
@@ -326,42 +554,77 @@
 
   // --- rhythm state ---
   const LANES = 8;
-  // lane groups: 0..3 arrows, 4..7 symbols
   const laneLabel = [
     { type:'arrow', code:'ArrowLeft', glyph:'←' },
     { type:'arrow', code:'ArrowDown', glyph:'↓' },
     { type:'arrow', code:'ArrowUp',   glyph:'↑' },
     { type:'arrow', code:'ArrowRight',glyph:'→' },
-    { type:'sym',   code:'KeyA', glyph:'□' }, // square
-    { type:'sym',   code:'KeyS', glyph:'×' }, // cross
-    { type:'sym',   code:'KeyD', glyph:'○' }, // circle
-    { type:'sym',   code:'KeyW', glyph:'△' }, // triangle
+    { type:'sym',   code:'KeyA', glyph:'□' },
+    { type:'sym',   code:'KeyS', glyph:'×' },
+    { type:'sym',   code:'KeyD', glyph:'○' },
+    { type:'sym',   code:'KeyW', glyph:'△' },
   ];
 
-  // controller mapping (standard mapping; best-effort)
   const padMap = {
     arrows: { left: 14, down: 13, up: 12, right: 15 },
     ps: { square: 2, cross: 0, circle: 1, triangle: 3 }
   };
 
-  let songId = 'SpeedDemon.wav';
-  let songLabel = 'SpeedDemon.wav';
+  let songId = 'Neolution-Theme.mp3';
+  let songLabel = 'Neolution Theme';
   let customObjectUrl = null;
+  let customFile = null; // the File behind a custom song (file input may be empty after drag-drop / shell upload)
+  let loadedSongSrc = null; // what audioEl currently has loaded ('custom' for a custom file)
+  let loadedCustomFile = null;
 
   let playing = false;
   let paused = false;
   let chartReady = false;
-  let chartBuilding = false; // Lock to prevent concurrent builds
+  let chartBuilding = false;
 
   let chartSeed = 123456;
-  let notes = []; // {t,lane,hit:false,miss:false}
+  let notes = [];
 
+  // --- judgement tiers + run stats ---
   let score = 0;
   let combo = 0;
-
-  // hit feedback
+  let maxCombo = 0;
+  let counts = { perfect: 0, great: 0, good: 0, miss: 0 };
   let hitFlash = 0;
   let missFlash = 0;
+  let runStartAt = 0;
+
+  // --- seed catalog ---
+  // A seed code fully determines a chart for a given song + difficulty:
+  // same code + same song + same difficulty = the exact same chart.
+  // Curated codes live in assets/data/seed_catalog.json; the embedded
+  // list below is the fallback (e.g. file:// where fetch is blocked).
+  const EMBEDDED_SEEDS = [
+    { id: 'neon-rush',  name: 'Neon Rush',  code: 'NEON-RUSH',  blurb: 'Steady stream — a great first chart.', difficulty: 1 },
+    { id: 'grid-storm', name: 'Grid Storm', code: 'GRID-STORM', blurb: 'Dense lanes, constant pressure.', difficulty: 2 },
+    { id: 'volt-surge', name: 'Volt Surge', code: 'VOLT-8',     blurb: 'Chord-heavy, jumpy patterns.', difficulty: 3 },
+    { id: 'pulse-line', name: 'Pulse Line', code: 'PULSE-21',   blurb: 'Syncopated, off-beat accents.', difficulty: 2 },
+    { id: 'tron-88',    name: 'TRON 88',    code: 'TRON-88',    blurb: 'Fast alternating lanes.', difficulty: 3 },
+    { id: 'echo-drift', name: 'Echo Drift', code: 'ECHO-7',     blurb: 'Sparse and spacious. Breathe.', difficulty: 0 },
+    { id: 'nova-burst', name: 'Nova Burst', code: 'NOVA-3',     blurb: 'Bursts of speed, then calm.', difficulty: 4 },
+    { id: 'zen-grid',   name: 'Zen Grid',   code: 'ZEN-42',     blurb: 'Slow, meditative flow.', difficulty: 0 }
+  ];
+  let seedCatalog = EMBEDDED_SEEDS.slice();
+  let currentSeedCode = settings.lastSeed || '';
+
+  function normalizeSeedCode(raw) {
+    return String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 24);
+  }
+  function seedCodeForDisplay(code) {
+    const c = normalizeSeedCode(code);
+    return c.length > 4 ? c.slice(0, 4) + '-' + c.slice(4) : c;
+  }
+  function randomSeedCode() {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    let s = 'NEO-';
+    for (let i = 0; i < 4; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+  }
 
   // difficulty params
   const diffParams = [
@@ -377,12 +640,18 @@
   }
 
   let lastError = '';
-  function setStatus(msg){
+  let lastStatusText = '';
+  let lastStatusAt = 0;
+  function setStatus(msg, force){
+    const now = performance.now();
+    if (!force && msg === lastStatusText) return;
+    if (!force && now - lastStatusAt < 150) return; // throttle: status text is rewritten every frame
+    lastStatusText = msg;
+    lastStatusAt = now;
     ui.status.textContent = msg;
   }
   function setError(err){
     if (!err){ lastError = ''; return; }
-    // Normalize Event / MediaError into something readable.
     try{
       if (err instanceof Event){
         const me = audioEl && audioEl.error;
@@ -402,6 +671,21 @@
   function updateScoreUI(){
     ui.scoreVal.textContent = String(score);
     ui.comboVal.textContent = String(combo);
+    const total = counts.perfect + counts.great + counts.good + counts.miss;
+    ui.accVal.textContent = total ? (accuracy() * 100).toFixed(1) + '%' : '—';
+  }
+  function accuracy(){
+    const total = counts.perfect + counts.great + counts.good + counts.miss;
+    if (!total) return 0;
+    return (counts.perfect * 1 + counts.great * 0.7 + counts.good * 0.4) / total;
+  }
+  function rankFor(acc, missCount){
+    if (missCount === 0 && acc >= 0.95) return 'S';
+    if (acc >= 0.95) return 'S';
+    if (acc >= 0.90) return 'A';
+    if (acc >= 0.80) return 'B';
+    if (acc >= 0.70) return 'C';
+    return 'D';
   }
 
   // --- chart building ---
@@ -411,7 +695,6 @@
     chartSeed = seed;
     const rng = mulberry32(seed);
 
-    // Filter peaks by spacing and difficulty keep ratio
     const kept = [];
     let lastT = -999;
     for (const p of peaks){
@@ -421,7 +704,6 @@
       lastT = p.t;
     }
 
-    // If decoding gave too few peaks, fall back to a fixed grid (still deterministic)
     if (kept.length < 80){
       kept.length = 0;
       const step = lerp(0.55, 0.22, (parseInt(ui.diffSel.value,10)||1) / 4);
@@ -430,7 +712,6 @@
       }
     }
 
-    // Lane selection: keep it readable; alternate groups
     const out = [];
     let mode = 0;
     for (const t of kept){
@@ -439,7 +720,6 @@
       const base = mode===0 ? 0 : 4;
       const lane = base + Math.floor(rng()*4);
       out.push({ t, lane, hit:false, miss:false });
-      // occasional chord on higher diffs
       if (parseInt(ui.diffSel.value,10) >= 3 && rng() < 0.14){
         let lane2 = base + Math.floor(rng()*4);
         if (lane2 === lane) lane2 = base + ((lane2+1)%4);
@@ -447,23 +727,26 @@
       }
     }
 
-    // Sort & return
     out.sort((a,b)=>a.t-b.t || a.lane-b.lane);
     return out;
   }
 
+  function chartSeedString(sourceLabel, audioFingerprint){
+    const code = normalizeSeedCode(currentSeedCode) || 'NEO-DEFAULT';
+    return code + '|' + sourceLabel + '|' + audioFingerprint + '|diff' + (parseInt(ui.diffSel.value,10)||1);
+  }
+
   async function rebuildChartUsingDecodeIfPossible(sourceLabel, fromFile){
-    if (chartBuilding) return; // Skip if already building
+    if (chartBuilding) return;
     chartBuilding = true;
     chartReady = false;
-    setStatus('building chart...');
+    setStatus('building chart...', true);
 
     try{
       let buf = null;
       if (fromFile){
         buf = await decodeForChartFromFile(fromFile);
       } else {
-        // Try fetch+decode for dropdown songs. This may fail under file://.
         ensureAudioGraph();
         const res = await fetch(sourceLabel);
         const ab = await res.arrayBuffer();
@@ -471,16 +754,14 @@
       }
 
       const peaks = buildPeaksFromBuffer(buf);
-      notes = buildDeterministicChart(peaks, buf.duration, sourceLabel + '|' + buf.length + '|' + buf.sampleRate);
+      notes = buildDeterministicChart(peaks, buf.duration, chartSeedString(sourceLabel, buf.length + ':' + buf.sampleRate));
       chartReady = true;
-      setStatus(`chart ready: ${notes.length} notes  |  ${currentDiff().name}\n(If timing feels off, adjust Offset.)`);
+      setStatus(`chart ready: ${notes.length} notes  |  ${currentDiff().name}  |  seed ${seedCodeForDisplay(currentSeedCode) || '—'}\n(If timing feels off, adjust Offset.)`, true);
     } catch (err){
-      // Fallback: deterministic, duration-based.
       const dur = isFinite(audioEl.duration) ? audioEl.duration : 180;
-      const seedStr = sourceLabel + '|' + String(dur.toFixed(3));
+      const seedStr = chartSeedString(sourceLabel, String(dur.toFixed(3)));
       const pseudoPeaks = [];
       const rng = mulberry32(fnv1a(seedStr));
-      // pseudo-peaks (not sound-based, but stable)
       const step = lerp(0.52, 0.20, (parseInt(ui.diffSel.value,10)||1) / 4);
       for (let t=1.0; t<dur-1.0; t += step){
         if (rng() < 0.92) pseudoPeaks.push({ t, e: 1 });
@@ -492,7 +773,7 @@
         'Playback is fine, chart is deterministic fallback.\n' +
         'For true soundwave charting: use Choose File OR run a local server.\n' +
         `notes: ${notes.length}`
-      );
+      , true);
       console.warn('Chart decode failed:', err);
     } finally {
       chartBuilding = false;
@@ -501,44 +782,109 @@
 
   function clearNotesState(){
     for (const n of notes){ n.hit=false; n.miss=false; }
-    score = 0; combo = 0;
+    score = 0; combo = 0; maxCombo = 0;
+    counts = { perfect: 0, great: 0, good: 0, miss: 0 };
     hitFlash = 0; missFlash = 0;
     updateScoreUI();
   }
 
+  async function applySeed(code, opts){
+    const clean = normalizeSeedCode(code);
+    if (!clean){ setError('Enter a seed code first.'); return false; }
+    currentSeedCode = clean;
+    settings.lastSeed = clean;
+    saveAll();
+    ui.seedLbl.textContent = 'seed: ' + seedCodeForDisplay(clean);
+    ui.seedInput.value = seedCodeForDisplay(clean);
+    ui.seedInputTitle.value = seedCodeForDisplay(clean);
+    document.querySelectorAll('.seedCard').forEach(el => el.classList.toggle('active', el.dataset.code === clean));
+    if (opts && opts.rebuild === false) return true;
+    try{
+      if (songId === 'custom' && customFile){
+        await loadSongFromFile(customFile);
+      } else {
+        await loadSongFromDropdown();
+      }
+      if (!stats.seedsPlayed.includes(clean)){
+        stats.seedsPlayed.push(clean); saveAll();
+        if (stats.seedsPlayed.length >= 3) unlockAchievement('seed-explorer');
+      }
+      return true;
+    } catch(e){
+      setError(e && e.message ? e.message : e);
+      console.error(e);
+      return false;
+    }
+  }
+
+  async function regenerateChart(useRandom){
+    if (!chartReady) return;
+    const code = randomSeedCode();
+    await applySeed(code);
+    setStatus(`New seed: ${seedCodeForDisplay(code)} | Chart regenerated`, true);
+  }
+
   // --- transport ---
   function audioTime(){
-    // Offset is ms added to judgement so user can calibrate
     const off = (parseInt(ui.offset.value,10)||0) / 1000;
     return (audioEl.currentTime || 0) + off;
   }
 
   async function loadSongFromDropdown(){
     songId = ui.songSel.value;
-    songLabel = songId;
-    if (customObjectUrl){
-      URL.revokeObjectURL(customObjectUrl);
-      customObjectUrl = null;
+    customFile = null;
+    songLabel = ui.songSel.options[ui.songSel.selectedIndex] ? ui.songSel.options[ui.songSel.selectedIndex].textContent : songId;
+    // Only reload the media element when the song actually changed.
+    // A seed/difficulty change rebuilds the chart, not the audio — this
+    // avoids aborting an in-flight media load and re-buffering.
+    if (loadedSongSrc !== songId){
+      if (customObjectUrl){
+        URL.revokeObjectURL(customObjectUrl);
+        customObjectUrl = null;
+      }
+      loadedCustomFile = null;
+      audioEl.src = songId;
+      audioEl.load();
+      loadedSongSrc = songId;
+      clearNotesState();
+      setError('');
+      await waitMetadata();
+    } else {
+      clearNotesState();
+      setError('');
     }
-    audioEl.src = songId;
-    audioEl.load();
-    clearNotesState();
-    setError('');
-    await waitMetadata();
     await rebuildChartUsingDecodeIfPossible(songId, null);
+    updateTitleBest();
   }
 
   async function loadSongFromFile(file){
+    if (!file || !/^audio\//.test(file.type) && !/\.(mp3|wav|ogg|m4a|flac)$/i.test(file.name)){
+      setError('That file does not look like audio. Try an MP3, WAV, OGG, M4A or FLAC file.');
+      return;
+    }
     songId = 'custom';
     songLabel = file.name;
-    if (customObjectUrl) URL.revokeObjectURL(customObjectUrl);
-    customObjectUrl = URL.createObjectURL(file);
-    audioEl.src = customObjectUrl;
-    audioEl.load();
-    clearNotesState();
-    setError('');
-    await waitMetadata();
+    customFile = file;
+    // Reuse the object URL when it is the same file (seed/difficulty
+    // changes rebuild the chart without touching the media element).
+    if (loadedCustomFile !== file || !customObjectUrl){
+      if (customObjectUrl) URL.revokeObjectURL(customObjectUrl);
+      customObjectUrl = URL.createObjectURL(file);
+      loadedCustomFile = file;
+      audioEl.src = customObjectUrl;
+      audioEl.load();
+      loadedSongSrc = 'custom';
+      clearNotesState();
+      setError('');
+      await waitMetadata();
+    } else {
+      clearNotesState();
+      setError('');
+    }
     await rebuildChartUsingDecodeIfPossible(file.name, file);
+    unlockAchievement('custom-track');
+    updateTitleBest();
+    setStatus(`Custom song loaded: ${file.name} — ${notes.length} notes. Press Play.`, true);
   }
 
   function waitMetadata(){
@@ -574,12 +920,10 @@
   async function startPlayback(){
     ensureAudioGraph();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
-    // Ensure the media element has data buffered before play() to reduce NotSupported/Abort errors.
     await waitCanPlay();
     try{
       await audioEl.play();
     } catch(e){
-      // Surface useful diagnostics
       const src = audioEl.currentSrc || audioEl.src || '(no src)';
       const code = audioEl.error && audioEl.error.code ? audioEl.error.code : '';
       const extra = code ? ` (mediaErrCode ${code})` : '';
@@ -588,16 +932,18 @@
     setError('');
     playing = true;
     paused = false;
+    runStartAt = performance.now();
+    postToParent({ type: 'neolution:started', song: songLabel, difficulty: currentDiff().name });
   }
 
-  // Audio end handler for looping
   audioEl.addEventListener('ended', () => {
     if (loopEnabled && playing) {
-      // Reset to start and loop seamlessly
       audioEl.currentTime = 0;
       clearNotesState();
       audioEl.play().catch(e => console.error('Loop playback failed:', e));
+      return;
     }
+    if (playing) finishRun();
   });
 
   function pausePlayback(){
@@ -607,6 +953,7 @@
   }
 
   async function restartPlayback(){
+    hideOverlays();
     audioEl.currentTime = 0;
     clearNotesState();
     await startPlayback();
@@ -620,7 +967,6 @@
 
   async function toggleStartStop(){
     if (!playing) {
-      // Guard: if audio failed to load/decode, don't look "dead".
       if (audioEl && audioEl.error){
         const code = audioEl.error.code;
         const hint = (location && location.protocol === 'file:')
@@ -633,7 +979,7 @@
         setError('Chart is still building. Wait for it to finish (or choose a file for guaranteed analysis).');
         return;
       }
-      // Start always restarts from beginning (same as Restart button)
+      hideOverlays();
       try{ await restartPlayback(); }
       catch(e){
         setError(e && e.message ? e.message : e);
@@ -641,18 +987,210 @@
       }
     } else {
       pausePlayback();
+      showPause();
     }
   }
 
-  // --- gameplay judgement ---
+  function togglePause(){
+    if (playing){ pausePlayback(); showPause(); }
+    else if (paused && !ui.pauseScreen.classList.contains('hidden')){ hideOverlays(); startPlayback().catch(e => setError(e.message || e)); }
+    else if (paused){ hideOverlays(); startPlayback().catch(e => setError(e.message || e)); }
+  }
+
+  // --- run end: results, bests, stats, achievements, ad trigger ---
+  function finishRun(){
+    playing = false; paused = false;
+    // any notes never reached count as misses for an honest accuracy
+    for (const n of notes){ if (!n.hit && !n.miss){ n.miss = true; counts.miss++; } }
+    const acc = accuracy();
+    const rank = rankFor(acc, counts.miss);
+    const fullCombo = counts.miss === 0 && notes.length > 0;
+    const key = songLabel + '|' + currentDiff().name;
+    const prev = bests[key];
+    const isNewBest = !prev || score > prev.score;
+    if (isNewBest) bests[key] = { score, acc, rank };
+    stats.runs++;
+    stats.perfectHits += counts.perfect;
+    stats.tracksCleared++;
+    if (maxCombo >= 50) unlockAchievement('combo-50');
+    if (maxCombo >= 100) unlockAchievement('combo-100');
+    if (rank === 'S') unlockAchievement('rank-s');
+    if (fullCombo) unlockAchievement('full-combo');
+    if (acc >= 0.95) unlockAchievement('accuracy-95');
+    unlockAchievement('first-clear');
+    saveAll();
+
+    // results screen
+    document.getElementById('resultTrack').textContent = songLabel;
+    document.getElementById('resultDiff').textContent = currentDiff().name;
+    document.getElementById('resultSeed').textContent = seedCodeForDisplay(currentSeedCode) || '—';
+    document.getElementById('resultSeedShare').textContent = seedCodeForDisplay(currentSeedCode) || '—';
+    document.getElementById('resultRank').textContent = rank;
+    document.getElementById('resultRank').style.color = rank === 'S' ? '#7df9ff' : rank === 'A' ? '#5effa3' : rank === 'B' ? '#ffb14d' : rank === 'C' ? '#ff9d5c' : '#ff7c7c';
+    document.getElementById('resultScore').textContent = String(score);
+    document.getElementById('resultAcc').textContent = (acc * 100).toFixed(1) + '%';
+    document.getElementById('resultCombo').textContent = 'x' + maxCombo;
+    document.getElementById('resultNotes').textContent = String(notes.length);
+    document.getElementById('cPerfect').textContent = String(counts.perfect);
+    document.getElementById('cGreat').textContent = String(counts.great);
+    document.getElementById('cGood').textContent = String(counts.good);
+    document.getElementById('cMiss').textContent = String(counts.miss);
+    document.getElementById('newBestBadge').classList.toggle('hidden', !isNewBest);
+    document.getElementById('fcBadge').classList.toggle('hidden', !fullCombo);
+    const adDue = (adRuns + 1) >= CONFIG.RUNS_BETWEEN_ADS;
+    postToParent({ type: 'neolution:results', score, accuracy: acc, maxCombo, rank, counts: { ...counts }, song: songLabel, difficulty: currentDiff().name, seedCode: seedCodeForDisplay(currentSeedCode), isNewBest, durationSec: isFinite(audioEl.duration) ? audioEl.duration : 0, runSeconds: (performance.now() - runStartAt) / 1000, adDue });
+
+    // AdSense: after every Nth completed run, show the break (between runs only).
+    adRuns++;
+    if (adDue){ adRuns = 0; }
+    saveAll();
+    if (shellMode){
+      // The release shell shows results + the ad break; the game stays quiet behind it.
+      return;
+    }
+    ui.resultsScreen.classList.remove('hidden');
+    updateTitleBest();
+    if (adDue) showAdBreak();
+  }
+
+  function updateTitleBest(){
+    const key = songLabel + '|' + currentDiff().name;
+    const b = bests[key];
+    ui.titleBest.textContent = b ? (b.score.toLocaleString() + '  •  ' + (b.acc * 100).toFixed(1) + '%  •  rank ' + b.rank) : '—';
+  }
+
+  // --- overlays ---
+  function hideOverlays(){
+    ui.titleScreen.classList.add('hidden');
+    ui.resultsScreen.classList.add('hidden');
+    ui.pauseScreen.classList.add('hidden');
+    ui.adModal.classList.add('hidden');
+  }
+  function showTitle(){
+    hideOverlays();
+    pausePlayback();
+    audioEl.currentTime = 0;
+    clearNotesState();
+    if (shellMode) return; // the release shell is the menu in shell mode
+    ui.titleScreen.classList.remove('hidden');
+    updateTitleBest();
+  }
+  function showPause(){
+    ui.pauseScreen.classList.remove('hidden');
+  }
+
+  // --- AdSense: an ad after every Nth completed run, between runs only ---
+  // The game works identically with ads unconfigured or blocked: the ad
+  // script is only loaded when an ad is actually due AND a publisher ID
+  // is configured. If the ad fails to fill, a small support panel shows
+  // instead. The player can always Continue — the modal never traps.
+  let adsenseScriptState = 'idle'; // idle | loading | ready | failed
+  function loadAdsenseScript(){
+    return new Promise((resolve) => {
+      if (!CONFIG.ADSENSE_PUBLISHER_ID){ resolve(false); return; }
+      if (adsenseScriptState === 'ready'){ resolve(true); return; }
+      if (adsenseScriptState === 'failed'){ resolve(false); return; }
+      adsenseScriptState = 'loading';
+      const s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + encodeURIComponent(CONFIG.ADSENSE_PUBLISHER_ID);
+      s.crossOrigin = 'anonymous';
+      s.onload = () => { adsenseScriptState = 'ready'; resolve(true); };
+      s.onerror = () => { adsenseScriptState = 'failed'; resolve(false); };
+      document.head.appendChild(s);
+    });
+  }
+  function showSupportFallback(){
+    ui.adBox.innerHTML =
+      '<div class="support">' +
+      '<b>Neolution is free — and it stays free because players chip in.</b><br/>' +
+      '<a href="' + CONFIG.SUPPORT_LINKS.kofi + '" target="_blank" rel="noopener">Ko-fi</a> &nbsp;•&nbsp; ' +
+      '<a href="' + CONFIG.SUPPORT_LINKS.coffee + '" target="_blank" rel="noopener">Buy Me a Coffee</a> &nbsp;•&nbsp; ' +
+      '<a href="' + CONFIG.SUPPORT_LINKS.sponsors + '" target="_blank" rel="noopener">GitHub Sponsors</a><br/>' +
+      '<span class="fine">Ads will appear here once AdSense is connected.</span>' +
+      '</div>';
+  }
+  async function showAdBreak(){
+    ui.adBox.innerHTML = '';
+    ui.adModal.classList.remove('hidden');
+    const ok = await loadAdsenseScript();
+    if (!ok || !CONFIG.ADSENSE_AD_SLOT){ showSupportFallback(); return; }
+    try{
+      const ins = document.createElement('ins');
+      ins.className = 'adsbygoogle';
+      ins.style.display = 'block';
+      ins.setAttribute('data-ad-client', CONFIG.ADSENSE_PUBLISHER_ID);
+      ins.setAttribute('data-ad-slot', CONFIG.ADSENSE_AD_SLOT);
+      ins.setAttribute('data-ad-format', 'auto');
+      ins.setAttribute('data-full-width-responsive', 'true');
+      ui.adBox.appendChild(ins);
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+      // If the slot does not fill (blocked, no inventory, bad config),
+      // fall back to the support panel instead of a blank box.
+      setTimeout(() => {
+        if (!ui.adModal.classList.contains('hidden') && !ins.querySelector('iframe') && ins.getAttribute('data-ad-status') !== 'filled'){
+          showSupportFallback();
+        }
+      }, 2500);
+    } catch(_){
+      showSupportFallback();
+    }
+  }
+
+  // --- release-shell bridge (postMessage) ---
+  function postToParent(msg){
+    try{
+      if (window.parent && window.parent !== window){
+        const target = (location.protocol === 'http:' || location.protocol === 'https:') ? location.origin : '*';
+        window.parent.postMessage(msg, target);
+      }
+    } catch(_){}
+  }
+  function isTrustedMessageOrigin(e){
+    if (location.protocol === 'file:') return e.origin === 'null' || e.origin === 'file://';
+    return e.origin === location.origin;
+  }
+  window.addEventListener('message', (e) => {
+    if (!isTrustedMessageOrigin(e)) return;
+    const msg = e.data || {};
+    if (msg.type === 'neolution:launch'){
+      if (typeof msg.difficulty !== 'undefined'){ ui.diffSel.value = String(msg.difficulty); syncTitleDiff(); }
+      if (typeof msg.offset !== 'undefined'){ ui.offset.value = String(msg.offset); ui.offsetLbl.textContent = String(msg.offset); }
+      hideOverlays();
+      loadSongFromDropdown().then(() => toggleStartStop()).catch(err => setError(err.message || err));
+    } else if (msg.type === 'neolution:customSong' && msg.file instanceof File){
+      hideOverlays();
+      loadSongFromFile(msg.file).then(() => toggleStartStop()).catch(err => setError(err.message || err));
+    } else if (msg.type === 'neolution:command'){
+      if (msg.command === 'retry') restartPlayback().catch(err => setError(err.message || err));
+      else if (msg.command === 'pause'){ if (playing){ pausePlayback(); showPause(); } }
+      else if (msg.command === 'resume'){ hideOverlays(); if (paused) startPlayback().catch(err => setError(err.message || err)); }
+      else if (msg.command === 'menu') showTitle();
+    } else if (msg.type === 'neolution:setHud'){
+      hudVisible = msg.mode !== 'minimal';
+      ui.hud.style.display = hudVisible ? 'block' : 'none';
+    }
+  });
+
+  // --- gameplay judgement (tiers) ---
+  let judgePopUntil = 0;
+  let judgePopText = '';
+  let judgePopColor = '#fff';
+  let comboPopUntil = 0;
+  let comboPopText = '';
+  function showJudgePop(text, color){
+    judgePopText = text; judgePopColor = color; judgePopUntil = performance.now() + 420;
+  }
+  function showComboPop(text){
+    comboPopText = text; comboPopUntil = performance.now() + 900;
+  }
+
   function tryHitLane(lane){
     if (!chartReady) return;
     const tNow = audioTime();
     const d = currentDiff();
 
-    // Find nearest unhit note in this lane within window
     let best = null;
-    let bestIdx = -1;
     let bestAbs = 9e9;
     for (let i=0;i<notes.length;i++){
       const n = notes[i];
@@ -662,23 +1200,27 @@
       if (adt < bestAbs){
         bestAbs = adt;
         best = n;
-        bestIdx = i;
       }
       if (n.t > tNow + d.hitWin) break;
     }
     if (best && bestAbs <= d.hitWin){
       best.hit = true;
-      // Audible confirmation: arrows vs symbols have different tones.
       const strength = 1 - clamp(bestAbs / d.hitWin, 0, 1);
       playHitTone(lane, strength);
+      let tier, base;
+      if (bestAbs <= d.hitWin * 0.35){ tier = 'PERFECT'; base = 300; counts.perfect++; }
+      else if (bestAbs <= d.hitWin * 0.65){ tier = 'GREAT'; base = 200; counts.great++; }
+      else { tier = 'GOOD'; base = 100; counts.good++; }
       combo += 1;
-      score += 100 + Math.min(900, combo * 5);
+      if (combo > maxCombo) maxCombo = combo;
+      score += base + Math.min(900, combo * 5);
       hitFlash = 1.0;
+      showJudgePop(tier, tier === 'PERFECT' ? '#7df9ff' : tier === 'GREAT' ? '#5effa3' : '#ffb14d');
+      if (combo > 0 && combo % 50 === 0) showComboPop('COMBO x' + combo);
       updateScoreUI();
       return true;
     }
 
-    // No note: treat as miss input (small penalty)
     combo = 0;
     missFlash = 1.0;
     updateScoreUI();
@@ -693,6 +1235,7 @@
       if (n.hit || n.miss) continue;
       if (n.t < tNow - d.hitWin){
         n.miss = true;
+        counts.miss++;
         combo = 0;
         missFlash = 1.0;
         updateScoreUI();
@@ -708,18 +1251,14 @@
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     const gp = pads && pads[0];
     if (!gp) return;
-
-    // buttons
     for (let i=0;i<gp.buttons.length;i++){
       const v = gp.buttons[i] && gp.buttons[i].pressed ? 1 : 0;
       const prev = lastPad.btn[i] || 0;
       if (v && !prev){
-        // rising edge
         if (i === padMap.arrows.left)  { markLanePressed(0); tryHitLane(0); }
         if (i === padMap.arrows.down)  { markLanePressed(1); tryHitLane(1); }
         if (i === padMap.arrows.up)    { markLanePressed(2); tryHitLane(2); }
         if (i === padMap.arrows.right) { markLanePressed(3); tryHitLane(3); }
-
         if (i === padMap.ps.square)   { markLanePressed(4); tryHitLane(4); }
         if (i === padMap.ps.cross)    { markLanePressed(5); tryHitLane(5); }
         if (i === padMap.ps.circle)   { markLanePressed(6); tryHitLane(6); }
@@ -729,9 +1268,24 @@
     }
   }
 
-  // --- visuals: TRON grid ---
-  let gridN = 28; // density
-  let pitch = 0.28; // perspective strength
+  // --- touch / mouse: tap a lane to hit it ---
+  function laneFromClientX(clientX){
+    const W = window.innerWidth;
+    const band = W * 0.56;
+    const left = (W - band) * 0.5;
+    const w = band / LANES;
+    return clamp(Math.floor((clientX - left) / w), 0, LANES - 1);
+  }
+  canvas.addEventListener('pointerdown', (e) => {
+    if (!playing) return;
+    const lane = laneFromClientX(e.clientX);
+    markLanePressed(lane);
+    tryHitLane(lane);
+  });
+
+  // --- visuals: TRON grid (unchanged engine) ---
+  let gridN = 28;
+  let pitch = 0.28;
 
   function cellPxNear(){
     return clamp(140 - gridN * 1.4, 26, 140);
@@ -740,16 +1294,13 @@
   function drawNeonLine(x1,y1,x2,y2,w,glow,a1,a2,color){
     ctx.globalCompositeOperation = 'lighter';
     ctx.lineCap = 'round';
-
     ctx.strokeStyle = color;
     ctx.globalAlpha = a1;
     ctx.lineWidth = w;
     ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-
     ctx.globalAlpha = a2;
     ctx.lineWidth = w + glow;
     ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
   }
@@ -761,7 +1312,6 @@
     const horizon = H * 0.23;
     const nearY = H * 0.88;
 
-    // subtle floor vignette
     ctx.globalCompositeOperation = 'source-over';
     const grad = ctx.createRadialGradient(cx, nearY, H*0.05, cx, nearY, H*0.60);
     grad.addColorStop(0, 'rgba(20,22,40,0.55)');
@@ -771,18 +1321,15 @@
 
     const cellNear = cellPxNear();
     const halfSpan = W * 0.55;
-
     const lanesFar = 46;
     const lanesNear = 120;
 
-    // perspective helper: for a given depth z in [0,1], return y, scale
     function proj(z){
       const y = lerp(nearY, horizon, z);
       const k = lerp(1.0, 0.10, z);
       return { y, k };
     }
 
-    // horizontal lines
     for (let i=0;i<lanesFar;i++){
       const z = i/(lanesFar-1);
       const p = proj(z);
@@ -796,7 +1343,6 @@
       drawNeonLine(cx - span, y, cx + span, y, major?1.4:1.0, major?6.8:5.2, a1, a2, col);
     }
 
-    // vertical rays
     const n = Math.min(lanesNear, Math.floor(W / (cellNear*0.55)));
     for (let i=-n;i<=n;i++){
       const xNear = cx + i * cellNear;
@@ -808,7 +1354,6 @@
       drawNeonLine(xNear, nearY, xFar, horizon, major?1.25:0.95, major?7.2:5.2, a1, a2, col);
     }
 
-    // vanishing point glow
     ctx.globalCompositeOperation = 'lighter';
     const g2 = ctx.createRadialGradient(cx, horizon, 0, cx, horizon, H*0.08);
     g2.addColorStop(0,'rgba(200,240,255,0.55)');
@@ -820,9 +1365,7 @@
     return { cx, horizon, nearY };
   }
 
-  // --- rhythm overlay in perspective ---
   function laneXNear(idx, W){
-    // 8 lanes spread across a centered band
     const band = W * 0.56;
     const left = (W - band) * 0.5;
     const w = band / LANES;
@@ -830,7 +1373,6 @@
   }
 
   function laneXFar(idx, W, vpX){
-    // converge towards VP
     const bandFar = W * 0.05;
     const left = vpX - bandFar*0.5;
     const w = bandFar / LANES;
@@ -840,7 +1382,7 @@
   function notePos(tNow, noteT, travel, geom){
     const { cx, horizon, nearY } = geom;
     const dt = noteT - tNow;
-    const u = clamp(1 - (dt / travel), 0, 1); // 0 far, 1 near
+    const u = clamp(1 - (dt / travel), 0, 1);
     const z = clamp(1 - u, 0, 1);
     const y = lerp(nearY, horizon, z);
     const k = lerp(1.0, 0.10, z);
@@ -859,8 +1401,6 @@
     ctx.globalCompositeOperation = 'lighter';
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-
-    // thin wave
     ctx.strokeStyle = 'rgba(255,90,90,0.28)';
     ctx.lineWidth = 1.1;
     ctx.beginPath();
@@ -871,15 +1411,11 @@
       if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     }
     ctx.stroke();
-
-    // glow
     ctx.strokeStyle = 'rgba(255,90,90,0.12)';
     ctx.lineWidth = 4.6;
     ctx.stroke();
-
     ctx.globalCompositeOperation = 'source-over';
   }
-
 
   function drawSpectrum(geom){
     if (!analyser || !freqData) return;
@@ -887,7 +1423,6 @@
       analyser.getByteFrequencyData(freqData);
       const W = canvas.width;
       const H = canvas.height;
-      // place spectrum near top (above playfield), away from HUD.
       const yTop = Math.floor(H * 0.12);
       const barH = Math.max(28, Math.floor(H * 0.055));
       const x0 = Math.floor(W * 0.10);
@@ -895,7 +1430,6 @@
       const n = freqData.length;
       const step = Math.max(1, spectrumBinsStep|0);
 
-      // peak tracking (for debugger)
       let peakI = 0;
       let peakV = 0;
       for (let i=0;i<n;i+=step){
@@ -909,19 +1443,17 @@
       spectrumInfo.peakMag = peakV;
       spectrumInfo.err = '';
 
-      // draw background strip
       ctx.globalCompositeOperation = 'source-over';
       ctx.fillStyle = 'rgba(0,0,0,0.18)';
       ctx.fillRect(x0-6, yTop-6, (x1-x0)+12, barH+12);
 
-      // draw bars (frequency -> hue)
       ctx.globalCompositeOperation = 'lighter';
       const bars = Math.floor((x1-x0) / 3);
       const stride = Math.max(step, Math.floor(n / Math.max(1, bars)));
       let x = x0;
       for (let i=0;i<n && x < x1; i += stride){
         const v = freqData[i] / 255;
-        const h = 210 + (i / n) * 120; // blue->pink/orange
+        const h = 210 + (i / n) * 120;
         const a = 0.10 + v * 0.75;
         const hh = v * barH;
         ctx.fillStyle = `hsla(${h.toFixed(1)}, 100%, 65%, ${a.toFixed(3)})`;
@@ -929,7 +1461,6 @@
         x += 3;
       }
 
-      // subtle glow line
       ctx.fillStyle = 'rgba(255,90,90,0.20)';
       ctx.fillRect(x0, yTop + barH + 2, (x1-x0), 1);
       ctx.globalCompositeOperation = 'source-over';
@@ -944,24 +1475,19 @@
     const { cx, horizon, nearY } = geom;
     const hitY = nearY - canvas.height * 0.035;
 
-    // RED HIT LINE (requested)
     const baseA = 0.22;
     const a = baseA + 0.35*hitFlash + 0.45*missFlash;
     const glow = 10 + 16*hitFlash + 22*missFlash;
     drawNeonLine(W*0.22, hitY-10, W*0.78, hitY-10, 2.2, glow, a, a*0.35, 'rgba(255,60,60,0.90)');
 
-    // circles + glyphs
     for (let i=0;i<LANES;i++){
       const x = laneXNear(i, W);
       const r = 10.5;
       ctx.globalCompositeOperation = 'lighter';
-
-      // ring
       ctx.strokeStyle = 'rgba(255,90,230,0.85)';
       ctx.lineWidth = 2.6;
       ctx.beginPath(); ctx.arc(x, hitY, r, 0, Math.PI*2); ctx.stroke();
 
-      // pressed feedback ring (yellow, reactive)
       const p = lanePress[i] || 0;
       if (p > 0){
         const pa = clamp(p, 0, 1);
@@ -976,24 +1502,20 @@
       ctx.lineWidth = 8.5;
       ctx.beginPath(); ctx.arc(x, hitY, r, 0, Math.PI*2); ctx.stroke();
 
-      // glyph
       ctx.fillStyle = 'rgba(225,240,255,0.92)';
       ctx.font = '14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(laneLabel[i].glyph, x, hitY);
 
-      // On-screen clarification: WASD also triggers the symbol lanes.
       if (i >= 4){
         const key = (i===4?'A':i===5?'S':i===6?'D':'W');
         ctx.fillStyle = 'rgba(235,245,255,0.55)';
         ctx.font = '10px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
         ctx.fillText(key, x, hitY + 18);
       }
-
       ctx.globalCompositeOperation = 'source-over';
     }
-
     return { hitY };
   }
 
@@ -1006,7 +1528,7 @@
     for (const n of notes){
       if (n.hit || n.miss) continue;
       const pos = notePos(tNow, n.t, d.travel, geom);
-      if (pos.u <= 0) continue; // not yet spawned
+      if (pos.u <= 0) continue;
       if (pos.u >= 1.15) continue;
 
       const xN = laneXNear(n.lane, W);
@@ -1016,11 +1538,9 @@
 
       const r = lerp(4.2, 11.0, pos.u);
       const alpha = lerp(0.10, 0.95, pos.u);
-
       const isArrow = (n.lane < 4);
       const col = isArrow ? 'rgba(73,230,255,1)' : 'rgba(255,184,77,1)';
 
-      // note body
       ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = col;
       ctx.globalAlpha = alpha * 0.22;
@@ -1028,7 +1548,6 @@
       ctx.globalAlpha = alpha * 0.85;
       ctx.beginPath(); ctx.arc(x,y,r*0.80,0,Math.PI*2); ctx.fill();
 
-      // glyph
       ctx.globalAlpha = alpha;
       ctx.fillStyle = 'rgba(235,245,255,0.92)';
       ctx.font = `${Math.floor(r*1.45)}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace`;
@@ -1045,19 +1564,14 @@
   let last = performance.now();
   let acc = 0;
   const dtFixed = 1/120;
+  let lastDebugAt = 0;
 
   function step(dt){
-    // decay flashes
     hitFlash = Math.max(0, hitFlash - dt*3.2);
     missFlash = Math.max(0, missFlash - dt*2.4);
-
-    // decay lane press rings
     for (let i=0;i<lanePress.length;i++){
       lanePress[i] = Math.max(0, lanePress[i] - dt*8.5);
     }
-
-    // inputs: keyboard hits (edge-ish)
-    // We use keydown edges by checking a latch per frame.
   }
 
   const keyLatch = new Map();
@@ -1069,18 +1583,14 @@
   }
 
   function handleInputs(){
-    // arrows
     if (consumePress('ArrowLeft')) { markLanePressed(0); tryHitLane(0); }
     if (consumePress('ArrowDown')) { markLanePressed(1); tryHitLane(1); }
     if (consumePress('ArrowUp'))   { markLanePressed(2); tryHitLane(2); }
     if (consumePress('ArrowRight')){ markLanePressed(3); tryHitLane(3); }
-
-    // WASD symbols
     if (consumePress('KeyA')) { markLanePressed(4); tryHitLane(4); }
     if (consumePress('KeyS')) { markLanePressed(5); tryHitLane(5); }
     if (consumePress('KeyD')) { markLanePressed(6); tryHitLane(6); }
     if (consumePress('KeyW')) { markLanePressed(7); tryHitLane(7); }
-
     pollGamepadEdges();
   }
 
@@ -1090,18 +1600,31 @@
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     const geom = drawGrid3D();
-
-    // spectrum + waveform (cosmetic only)
     drawSpectrum(geom);
     drawWaveform(geom);
-
-    // notes and receptors
     drawNotes(geom);
     drawReceptors(geom);
 
-    // status
-    const t = audioEl.currentTime || 0;
+    // progress bar
     const dur = isFinite(audioEl.duration) ? audioEl.duration : 0;
+    const t = audioEl.currentTime || 0;
+    ui.progressFill.style.width = dur > 0 ? ((t / dur) * 100).toFixed(1) + '%' : '0%';
+
+    // judgement + combo popups
+    const now = performance.now();
+    const jLeft = judgePopUntil - now;
+    if (jLeft > 0){
+      ui.judgePop.textContent = judgePopText;
+      ui.judgePop.style.color = judgePopColor;
+      ui.judgePop.style.opacity = String(clamp(jLeft / 420, 0, 1));
+    } else ui.judgePop.style.opacity = '0';
+    const cLeft = comboPopUntil - now;
+    if (cLeft > 0){
+      ui.comboPop.textContent = comboPopText;
+      ui.comboPop.style.opacity = String(clamp(cLeft / 900, 0, 1));
+    } else ui.comboPop.style.opacity = '0';
+
+    // status (throttled inside setStatus)
     const d = currentDiff();
     const mode = playing ? (paused ? 'paused' : 'playing') : 'stopped';
     const errLine = lastError ? (`ERROR: ${lastError}\n`) : '';
@@ -1110,8 +1633,22 @@
       `mode: ${mode}  |  time: ${t.toFixed(2)} / ${dur?dur.toFixed(2):'--'}\n` +
       `diff: ${d.name}  |  travel: ${d.travel.toFixed(2)}s  |  hitwin: ${Math.round(d.hitWin*1000)}ms\n` +
       `spectrum: ${spectrumInfo.on ? ('on  peak ' + spectrumInfo.peakHz.toFixed(0) + 'Hz  mag ' + Math.round(spectrumInfo.peakMag)) : ('off' + (spectrumInfo.err ? (' (' + spectrumInfo.err + ')') : ''))}\n` +
-      (chartReady ? `notes: ${notes.length}  |  seed: ${chartSeed}` : 'chart: building...')
+      (chartReady ? `notes: ${notes.length}  |  seed: ${seedCodeForDisplay(currentSeedCode) || '—'}` : 'chart: building...')
     );
+
+    // debug side panel (throttled)
+    if (now - lastDebugAt > 500){
+      lastDebugAt = now;
+      ui.sidePanelContent.textContent =
+        'DEBUG PANEL\n\n' +
+        `song: ${songLabel}\nmode: ${mode}\ntime: ${t.toFixed(2)} / ${dur ? dur.toFixed(2) : '--'}\n` +
+        `diff: ${d.name} | notes: ${notes.length} | seed: ${seedCodeForDisplay(currentSeedCode) || '—'}\n` +
+        `score: ${score} | combo: ${combo} (max ${maxCombo}) | acc: ${(accuracy()*100).toFixed(1)}%\n` +
+        `perfect ${counts.perfect} | great ${counts.great} | good ${counts.good} | miss ${counts.miss}\n` +
+        `spectrum: ${spectrumInfo.on ? 'on' : 'off'} | peak ${spectrumInfo.peakHz.toFixed(0)}Hz\n` +
+        `runs completed: ${stats.runs} | runs until ad: ${Math.max(0, CONFIG.RUNS_BETWEEN_ADS - adRuns)}\n` +
+        (lastError ? `\nERROR: ${lastError}` : '');
+    }
   }
 
   function frame(){
@@ -1120,44 +1657,114 @@
     last = now;
     dt = Math.min(dt, 0.05);
     acc += dt;
-
     while (acc >= dtFixed){
       step(dtFixed);
       acc -= dtFixed;
     }
-
     handleInputs();
     if (playing) markMisses();
     draw();
-
     requestAnimationFrame(frame);
   }
 
+  // --- seed catalog UI ---
+  function renderSeedGrid(){
+    ui.seedGrid.innerHTML = '';
+    for (const s of seedCatalog){
+      const el = document.createElement('div');
+      el.className = 'seedCard' + (normalizeSeedCode(currentSeedCode) === normalizeSeedCode(s.code) ? ' active' : '');
+      el.dataset.code = normalizeSeedCode(s.code);
+      el.innerHTML = '<b></b><code></code><span></span>';
+      el.querySelector('b').textContent = s.name;
+      el.querySelector('code').textContent = s.code;
+      el.querySelector('span').textContent = s.blurb + ' · ' + diffParams[s.difficulty].name;
+      el.addEventListener('click', async () => {
+        ui.diffSel.value = String(s.difficulty);
+        syncTitleDiff();
+        settings.difficulty = s.difficulty; saveAll();
+        await applySeed(s.code);
+      });
+      ui.seedGrid.appendChild(el);
+    }
+  }
+  async function loadSeedCatalog(){
+    try{
+      const res = await fetch('assets/data/seed_catalog.json');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data) && data.length && data[0].code){
+        seedCatalog = data;
+        renderSeedGrid();
+      }
+    } catch(_){ /* file:// or offline: embedded list stays */ }
+  }
+  function syncTitleDiff(){
+    const v = ui.diffSel.value;
+    document.querySelectorAll('#titleDiff button').forEach(b => b.classList.toggle('active', b.dataset.diff === v));
+  }
+  async function copySeedToClipboard(){
+    const code = seedCodeForDisplay(currentSeedCode) || 'NEO-DEFAULT';
+    try{ await navigator.clipboard.writeText(code); toast('Seed copied: ' + code); }
+    catch(_){
+      const ta = document.createElement('textarea');
+      ta.value = code; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); toast('Seed copied: ' + code); } catch(__){ toast('Seed: ' + code); }
+      ta.remove();
+    }
+  }
+
   // --- UI wiring ---
-  ui.offset.addEventListener('input', () => ui.offsetLbl.textContent = ui.offset.value);
+  ui.offset.addEventListener('input', () => {
+    ui.offsetLbl.textContent = ui.offset.value;
+    settings.offset = parseInt(ui.offset.value, 10) || 0; saveAll();
+  });
   ui.offsetLbl.textContent = ui.offset.value;
 
+  ui.vol.addEventListener('input', () => {
+    audioEl.volume = (parseInt(ui.vol.value, 10) || 0) / 100;
+    settings.volume = parseInt(ui.vol.value, 10) || 0; saveAll();
+  });
+  audioEl.volume = (settings.volume ?? 80) / 100;
+  ui.vol.value = String(settings.volume ?? 80);
+
+  ui.sidePanelToggle.addEventListener('click', () => {
+    const open = ui.sidePanel.classList.toggle('open');
+    ui.sidePanelToggle.textContent = open ? '◀' : '▶';
+  });
+
+  // Loop toggle (persisted)
+  let loopEnabled = !!settings.loop;
+  function renderLoopBtn(){
+    ui.loop.textContent = loopEnabled ? 'Loop: ON' : 'Loop: OFF';
+    ui.loop.style.background = loopEnabled ? 'rgba(73,230,255,.25)' : 'rgba(9,7,18,.65)';
+  }
+  ui.loop.addEventListener('click', () => {
+    loopEnabled = !loopEnabled;
+    settings.loop = loopEnabled; saveAll();
+    renderLoopBtn();
+  });
+  renderLoopBtn();
+
   ui.songSel.addEventListener('change', async () => {
-    if (chartBuilding) return; // Ignore while building
-    try{ 
+    if (chartBuilding) return;
+    try{
       await loadSongFromDropdown();
-      // Ensure chart is marked ready even if decode failed (fallback was used)
       if (!chartReady) chartReady = true;
     }
-    catch(e){ 
-      // Fallback chart should exist, ensure it's ready
+    catch(e){
       if (!chartReady) chartReady = true;
-      setError('audio error — ' + (e && e.message ? e.message : 'see console')); 
-      console.error(e); 
+      setError('audio error — ' + (e && e.message ? e.message : 'see console'));
+      console.error(e);
     }
   });
 
   ui.diffSel.addEventListener('change', async () => {
-    if (chartBuilding) return; // Ignore while building
-    // rebuild chart deterministically at new density
+    if (chartBuilding) return;
+    settings.difficulty = parseInt(ui.diffSel.value, 10) || 1; saveAll();
+    syncTitleDiff();
     try{
-      if (songId === 'custom' && ui.file.files && ui.file.files[0]){
-        await loadSongFromFile(ui.file.files[0]);
+      if (songId === 'custom' && customFile){
+        await loadSongFromFile(customFile);
       } else {
         await loadSongFromDropdown();
       }
@@ -1178,39 +1785,142 @@
     catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
   });
   ui.pause.addEventListener('click', async () => {
-    if (playing) {
-      pausePlayback();
-    } else if (paused) {
-      // Resume from pause
-      try{ await startPlayback(); }
-      catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
-    }
+    if (playing) { pausePlayback(); showPause(); }
+    else if (paused) { hideOverlays(); try{ await startPlayback(); } catch(e){ setError(e.message || e); } }
   });
   ui.restart.addEventListener('click', async () => {
     try{ await restartPlayback(); }
     catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
   });
+  ui.menu.addEventListener('click', () => showTitle());
+
+  ui.applySeed.addEventListener('click', () => applySeed(ui.seedInput.value));
+  ui.applySeedTitle.addEventListener('click', () => applySeed(ui.seedInputTitle.value));
+  ui.seedInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') applySeed(ui.seedInput.value); });
+  ui.seedInputTitle.addEventListener('keydown', (e) => { if (e.key === 'Enter') applySeed(ui.seedInputTitle.value); });
+  ui.copySeed.addEventListener('click', copySeedToClipboard);
+  document.getElementById('btnCopySeedResults').addEventListener('click', copySeedToClipboard);
+
+  // title screen
+  ui.titleDiff.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-diff]');
+    if (!b) return;
+    ui.diffSel.value = b.dataset.diff;
+    settings.difficulty = parseInt(b.dataset.diff, 10); saveAll();
+    syncTitleDiff();
+    if (!chartBuilding) loadSongFromDropdown().catch(err => setError(err.message || err));
+  });
+  ui.playBtn.addEventListener('click', async () => {
+    try{ await toggleStartStop(); }
+    catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
+  });
+  ui.dropzone.addEventListener('click', () => ui.fileTitle.click());
+  ui.fileTitle.addEventListener('change', async () => {
+    if (!ui.fileTitle.files || !ui.fileTitle.files[0]) return;
+    try{ await loadSongFromFile(ui.fileTitle.files[0]); }
+    catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
+  });
+  // drag & drop a song anywhere on the window
+  window.addEventListener('dragover', (e) => { e.preventDefault(); ui.dropzone.classList.add('over'); });
+  window.addEventListener('dragleave', () => ui.dropzone.classList.remove('over'));
+  window.addEventListener('drop', async (e) => {
+    e.preventDefault(); ui.dropzone.classList.remove('over');
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f) return;
+    try{ await loadSongFromFile(f); }
+    catch(err){ setError('audio error — ' + (err && err.message ? err.message : 'see console')); console.error(err); }
+  });
+
+  // results + pause buttons
+  document.getElementById('btnAgain').addEventListener('click', async () => {
+    try{ await restartPlayback(); }
+    catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
+  });
+  document.getElementById('btnToTitle').addEventListener('click', () => showTitle());
+  document.getElementById('btnResume').addEventListener('click', async () => {
+    hideOverlays();
+    try{ await startPlayback(); } catch(e){ setError(e.message || e); }
+  });
+  document.getElementById('btnRestartPause').addEventListener('click', async () => {
+    try{ await restartPlayback(); }
+    catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
+  });
+  document.getElementById('btnQuitTitle').addEventListener('click', () => showTitle());
+  document.getElementById('btnAdContinue').addEventListener('click', () => ui.adModal.classList.add('hidden'));
+
+  // auto-pause when the tab is hidden (prevents a pile of misses)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && playing){ pausePlayback(); showPause(); }
+  });
+  // Esc closes the ad modal (it is between runs, never mid-song)
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Escape' && !ui.adModal.classList.contains('hidden')){
+      ui.adModal.classList.add('hidden');
+    }
+  });
 
   // --- init ---
+  ui.diffSel.value = String(settings.difficulty ?? 1);
+  ui.offset.value = String(settings.offset ?? 0);
+  ui.offsetLbl.textContent = String(settings.offset ?? 0);
+  syncTitleDiff();
+  renderSeedGrid();
+  loadSeedCatalog();
+  if (currentSeedCode){
+    ui.seedLbl.textContent = 'seed: ' + seedCodeForDisplay(currentSeedCode);
+    ui.seedInput.value = seedCodeForDisplay(currentSeedCode);
+    ui.seedInputTitle.value = seedCodeForDisplay(currentSeedCode);
+  }
+  ui.playBtn.disabled = true;
+  ui.playBtn.style.opacity = '0.6';
+
   (async () => {
     try{
       await loadSongFromDropdown();
       updateScoreUI();
-      // Force chartReady to true so Start button works (even if decode failed, fallback was used)
       if (!chartReady) {
         chartReady = true;
-        setStatus('Chart using deterministic fallback (audio decode unavailable). Ready to play!');
+        setStatus('Chart using deterministic fallback (audio decode unavailable). Ready to play!', true);
       }
+      ui.titleStatus.textContent = 'Ready — press Play, or drop in your own song.';
+      ui.playBtn.disabled = false;
+      ui.playBtn.style.opacity = '1';
     } catch(e){
-      // Even on error, ensure we have a playable chart
       if (!chartReady) {
         chartReady = true;
-        setStatus('Chart using deterministic fallback. Ready to play!');
+        setStatus('Chart using deterministic fallback. Ready to play!', true);
       }
+      ui.titleStatus.textContent = 'Ready — press Play, or drop in your own song.';
+      ui.playBtn.disabled = false;
+      ui.playBtn.style.opacity = '1';
       setError(e && e.message ? e.message : e);
       console.error(e);
     }
+    if (shellMode){
+      // The release shell is the menu: hide our title screen and wait for launch commands.
+      ui.titleScreen.classList.add('hidden');
+    }
+    postToParent({ type: 'neolution:ready', song: songLabel });
   })();
+
+  // Debug/testing hook (read-only state + seek): exposes live state for
+  // automated verification and debugging. The debug side panel shows the
+  // same data; this just makes it scriptable. Not part of gameplay.
+  window.__neolution = {
+    get state() {
+      return {
+        song: songLabel, difficulty: currentDiff().name, playing, paused,
+        chartReady, notes: notes.map(n => ({ t: n.t, lane: n.lane, hit: n.hit, miss: n.miss })),
+        score, combo, maxCombo, counts: { ...counts }, accuracy: accuracy(),
+        seedCode: seedCodeForDisplay(currentSeedCode), audioTime: audioEl.currentTime,
+        duration: audioEl.duration, adRuns
+      };
+    },
+    seek(t) { try { audioEl.currentTime = clamp(t, 0, Math.max(0, (audioEl.duration || 0) - 0.05)); } catch (_) {} },
+    // Test/debug helper: set the completed-run counter (drives the ad break).
+    setAdRuns(n) { adRuns = clamp(Math.floor(n) || 0, 0, 100); saveAll(); },
+    version: '2.0.0'
+  };
 
   requestAnimationFrame(frame);
 })();
