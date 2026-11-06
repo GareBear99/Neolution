@@ -180,6 +180,18 @@ hr{border:none;border-top:1px solid rgba(87,232,255,.16);margin:18px 0}
     </div>
   </div>
 
+  <!-- Ad break (after every 3rd run, between runs only) -->
+  <div class="overlay hidden" id="adOverlay">
+    <div class="screen" style="max-width:560px;text-align:center">
+      <h2 class="panelTitle" style="font-size:22px">Thanks for playing Neolution</h2>
+      <p class="panelSub">Ads keep this game free. This one shows between songs — never while you play.</p>
+      <div id="adBoxShell" style="min-height:250px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:14px;margin:12px 0;overflow:hidden"></div>
+      <div class="actions" style="justify-content:center">
+        <button class="primary" id="btnAdContinueShell">Continue</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast"></div>
 </div>
 <script type="module" src="../src/ui/release_shell.js"></script>
