@@ -10,6 +10,9 @@
 //
 // Output: 44.1 kHz 16-bit stereo WAV, 128 BPM, 64 bars (2:00).
 // Transcode to MP3 with: ffmpeg -i out.wav -codec:a libmp3lame -b:a 192k Neolution-Theme.mp3
+// Ending: the last 5 s fade out smoothly to silence (no hard cut), and the
+// outro arp uses a triangle wave (same notes/rhythm) instead of the square
+// wave — the square arp's harsh harmonics read as static at the end.
 'use strict';
 const fs = require('fs');
 
@@ -132,16 +135,19 @@ for (let bar = 0; bar < BARS; bar++) {
   }
 
   // Arp: 16ths (intro/verse/break/outro: softer; drops: full)
+  // Outro uses a triangle wave (same notes/rhythm) — the square wave's
+  // harsh harmonics read as static once the drums drop out at the end.
   const arpOn = sec !== 'build';
   if (arpOn) {
     const arpAmp = (sec === 'drop1' || sec === 'drop2') ? 0.16 : 0.10;
+    const arpType = sec === 'outro' ? 'tri' : 'square';
     const arpOct = sec === 'drop2' ? 2 : 1;
     for (let s = 0; s < 16; s++) {
       const tone = ch.tones[arpPattern[s] % 3] * (s % 4 === 2 ? 2 : 1) * (arpOct === 2 && s % 8 === 6 ? 2 : 1);
       const t = tBar + s * (BEAT / 4);
-      addTone({ t0: t, dur: 0.14, f0: tone, type: 'square', amp: arpAmp, lp: 3200, pan: (s % 2 ? 0.18 : -0.18), decay: 0.10 });
+      addTone({ t0: t, dur: 0.14, f0: tone, type: arpType, amp: arpAmp, lp: 3200, pan: (s % 2 ? 0.18 : -0.18), decay: 0.10 });
       // simple echo: one repeat a dotted-8th later, quieter
-      addTone({ t0: t + BEAT * 0.75, dur: 0.12, f0: tone, type: 'square', amp: arpAmp * 0.22, lp: 2400, pan: (s % 2 ? -0.25 : 0.25), decay: 0.09 });
+      addTone({ t0: t + BEAT * 0.75, dur: 0.12, f0: tone, type: arpType, amp: arpAmp * 0.22, lp: 2400, pan: (s % 2 ? -0.25 : 0.25), decay: 0.09 });
     }
   }
 
@@ -220,6 +226,17 @@ for (let i = 0; i < N; i++) {
 const target = Math.pow(10, -1 / 20); // -1 dBFS
 const g = peak > 0 ? target / peak : 1;
 
+// Fade-out: the last 5 s ease to silence (raised-cosine). Without it the
+// file ends mid-note at full outro volume — a hard cut that reads as a
+// burst of static on the bare arp.
+const FADE_START = DUR - 5;
+function fadeAt(i) {
+  const t = i / SR;
+  if (t < FADE_START) return 1;
+  const u = (t - FADE_START) / (DUR - FADE_START);
+  return 0.5 * (1 + Math.cos(Math.PI * Math.min(1, u)));
+}
+
 // --- write 16-bit stereo WAV ---------------------------------------
 const outPath = process.argv[2] || 'Neolution-Theme.wav';
 const dataSize = N * 2 * 2;
@@ -229,8 +246,9 @@ buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.
 buf.writeUInt32LE(SR, 24); buf.writeUInt32LE(SR * 4, 28); buf.writeUInt16LE(4, 32); buf.writeUInt16LE(16, 34);
 buf.write('data', 36); buf.writeUInt32LE(dataSize, 40);
 for (let i = 0; i < N; i++) {
-  const l = Math.max(-1, Math.min(1, L[i] * g));
-  const r = Math.max(-1, Math.min(1, R[i] * g));
+  const f = fadeAt(i);
+  const l = Math.max(-1, Math.min(1, L[i] * g * f));
+  const r = Math.max(-1, Math.min(1, R[i] * g * f));
   buf.writeInt16LE(Math.round(l * 32767), 44 + i * 4);
   buf.writeInt16LE(Math.round(r * 32767), 44 + i * 4 + 2);
 }

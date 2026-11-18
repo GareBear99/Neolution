@@ -48,10 +48,11 @@
   };
 
   const EMBEDDED_SONGS = [
-    { id: 'neolution-theme', title: 'Neolution Theme', file: 'Neolution-Theme.mp3', artist: 'Neo-VECTR', lengthLabel: '2:00 • 128 BPM', description: 'Built-in original track, synthesized for this game.', status: 'playable' }
+    { id: 'speed-demon', title: 'SpeedDemon', file: 'SpeedDemon.mp3', artist: 'BassBruh', lengthLabel: '3:12 • 150 BPM', description: 'First song. A track by BassBruh — a friend of the game.', status: 'playable' },
+    { id: 'neolution-theme', title: 'Neolution Theme', file: 'Neolution-Theme.mp3', artist: 'Neo-VECTR', lengthLabel: '2:00 • 128 BPM', description: 'Built-in original track, synthesized for this game. The campaign song.', status: 'playable', campaign: true }
   ];
   let songs = EMBEDDED_SONGS.slice();
-  let selectedSong = 'Neolution-Theme.mp3';
+  let selectedSong = 'SpeedDemon.mp3';
   let selectedDifficulty = 1;
   let selectedOffset = 0;
   let gameReady = false;

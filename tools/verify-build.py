@@ -183,6 +183,41 @@ with sync_playwright() as p:
     check("play button enabled", page.is_enabled("#btnPlay"))
     page.screenshot(path=OUT + "/01-title.png")
 
+    # ---- 1b. main menu + freeplay grid (Campaign / Freeplay) ----
+    check("main menu: Campaign + Freeplay buttons", page.is_visible("#btnCampaign") and page.is_visible("#btnFreeplay"))
+    check("default song is SpeedDemon", page.eval_on_selector("#songSel", "el => el.value") == "SpeedDemon.mp3",
+          page.eval_on_selector("#songSel", "el => el.value"))
+    check("track card shows SpeedDemon / BassBruh", "SpeedDemon" in (page.text_content("#trackCardTitle") or "") and "BassBruh" in (page.text_content("#trackCardMeta") or ""),
+          page.text_content("#trackCardTitle"))
+    page.click("#btnFreeplay")
+    page.wait_for_timeout(300)
+    check("freeplay grid visible", page.is_visible("#freeplayScreen") and page.is_visible("#freeplayGrid"))
+    cards = page.eval_on_selector_all("#freeplayGrid .songCard", "els => els.map(e => e.getAttribute('data-file'))")
+    check("freeplay: SpeedDemon first, Theme second", cards[:2] == ["SpeedDemon.mp3", "Neolution-Theme.mp3"], str(cards))
+    check("freeplay: Theme card has CAMPAIGN badge", "CAMPAIGN" in (page.text_content("#freeplayGrid .songCard[data-file='Neolution-Theme.mp3']") or ""))
+    anim = page.eval_on_selector("#freeplayGrid .songCard.selected", "el => getComputedStyle(el).animationName")
+    check("selected card flashes yellow (Castle Crashers style)", anim == "flashYellow", anim)
+    clicks_before = (page.evaluate("() => window.__neolution.state") or {}).get("uiClicks", 0)
+    page.click("#freeplayGrid .songCard[data-file='Neolution-Theme.mp3']")
+    page.wait_for_timeout(300)
+    sel = page.eval_on_selector("#freeplayGrid .songCard.selected", "el => el.getAttribute('data-file')")
+    check("clicking a card selects it", sel == "Neolution-Theme.mp3", sel)
+    check("dropdown follows the grid selection", page.eval_on_selector("#songSel", "el => el.value") == "Neolution-Theme.mp3")
+    clicks_after = (page.evaluate("() => window.__neolution.state") or {}).get("uiClicks", 0)
+    check("click sound fires on selection change", clicks_after > clicks_before, f"{clicks_before}->{clicks_after}")
+    page.screenshot(path=OUT + "/01b-freeplay.png")
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(300)
+    check("Esc returns to the main menu", page.is_visible("#titleScreen") and not page.is_visible("#freeplayScreen"))
+    # Campaign button starts the campaign song (the fixed Theme, 120s)
+    page.click("#btnCampaign")
+    st = wait_state(lambda s: s["playing"] and "Neolution Theme" in (s["song"] or "") and abs((s["duration"] or 0) - 120) < 1, timeout=20)
+    check("Campaign starts the Theme", st and st["playing"] and "Neolution Theme" in (st["song"] or ""), (st or {}).get("song"))
+    # reset: reload so the seed/gameplay tests start clean on the default song
+    page.goto(BASE + "/index.html", wait_until="networkidle")
+    st = wait_state(lambda s: s["chartReady"] and len(s["notes"]) > 50, timeout=30)
+    check("reload after menu test, chart ready", bool(st), (st or {}).get("song"))
+
     # ---- 2. seed determinism ----
     prev_sig = sig_of(page.evaluate("() => window.__neolution.state"))
     page.fill("#seedInputTitle", "NEON-RUSH")

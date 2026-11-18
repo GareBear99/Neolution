@@ -69,6 +69,26 @@
   #judgePop{position:fixed;left:50%;top:58%;transform:translateX(-50%);z-index:8;pointer-events:none;font:900 30px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.08em;text-shadow:0 0 18px rgba(120,240,255,.5);opacity:0}
   #comboPop{position:fixed;left:50%;top:64%;transform:translateX(-50%);z-index:8;pointer-events:none;font:800 16px/1 ui-sans-serif,system-ui,sans-serif;color:rgba(230,245,255,.9);text-shadow:0 0 12px rgba(120,240,255,.4);opacity:0}
   .fine{font-size:12px;color:rgba(194,214,235,.7);line-height:1.5}
+  /* --- main menu entry buttons (Campaign / Freeplay) --- */
+  .menuEntry{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0}
+  .menuEntry button{flex:1;min-width:200px;font-size:19px;padding:16px 20px;border-radius:16px}
+  .menuEntry button small{display:block;font-size:12px;font-weight:400;opacity:.75;margin-top:4px}
+  /* --- freeplay song grid (on the black TRON grid background) --- */
+  .overlay.gridBack{background:transparent}
+  .overlay.gridBack .panel{background:transparent;border-color:transparent;box-shadow:none}
+  .songGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin:14px 0}
+  .songCard{background:rgba(10,14,28,.88);border:1px solid var(--b);border-radius:16px;padding:14px;cursor:pointer;min-height:110px}
+  .songCard b{display:block;font-size:16px}
+  .songCard .songMeta{color:var(--accent);font-size:12px;margin-top:2px}
+  .songCard span{display:block;font-size:12px;color:rgba(194,214,235,.8);margin-top:6px;line-height:1.45}
+  .songCard .badge{display:inline-block;background:rgba(255,177,69,.18);border:1px solid rgba(255,177,69,.5);color:#ffe1b0;border-radius:999px;padding:2px 10px;font-weight:800;font-size:11px;margin-top:8px}
+  /* Castle Crashers-style flashing yellow selection */
+  @keyframes flashYellow{
+    0%,100%{border-color:rgba(255,214,0,.95);box-shadow:0 0 0 2px rgba(255,214,0,.55),0 0 22px rgba(255,214,0,.45)}
+    50%{border-color:rgba(255,214,0,.35);box-shadow:0 0 0 2px rgba(255,214,0,.15),0 0 8px rgba(255,214,0,.12)}
+  }
+  .songCard:hover,.songCard.selected{animation:flashYellow .7s ease-in-out infinite}
+  .songCard.selected{background:rgba(40,32,8,.92)}
   #adBox{min-height:250px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);border:1px solid var(--b);border-radius:14px;margin:12px 0;overflow:hidden}
   #adBox .support{text-align:center;padding:20px;color:rgba(194,214,235,.9);line-height:1.6}
   #adBox .support a{color:var(--accent)}
@@ -86,7 +106,8 @@
   <div class="row">
     <label class="small">Song
       <select id="songSel">
-        <option value="Neolution-Theme.mp3" selected>Neolution Theme</option>
+        <option value="SpeedDemon.mp3" selected>SpeedDemon — BassBruh</option>
+        <option value="Neolution-Theme.mp3">Neolution Theme (Campaign)</option>
       </select>
     </label>
     <label class="small">Difficulty
@@ -136,13 +157,17 @@
   <div class="panel">
     <h1>NEOLUTION</h1>
     <p class="sub">A free neon rhythm game on a TRON grid. Hit the notes as they cross the red line — arrows with your arrow keys, symbols with WASD, taps on touch, or a gamepad. Play the built-in track, or drop in <b>your own songs</b>: every song gets a chart, and every chart has a seed code you can share.</p>
+    <div class="menuEntry">
+      <button class="primary" id="btnCampaign">▶ &nbsp;Campaign<small>The Neolution Theme — the campaign song</small></button>
+      <button class="gold" id="btnFreeplay">▦ &nbsp;Freeplay<small>Pick any song on the grid — SpeedDemon first</small></button>
+    </div>
     <div class="row">
       <div style="flex:1;min-width:220px">
-        <label>Track</label>
-        <div class="seedCard active" style="cursor:default">
-          <b>🎵 Neolution Theme</b>
-          <code>Original • 128 BPM • 2:00</code>
-          <span>Built-in track, synthesized for this game. No samples, no licence worries.</span>
+        <label>Selected track</label>
+        <div class="seedCard active" style="cursor:default" id="trackCard">
+          <b id="trackCardTitle">🎵 SpeedDemon</b>
+          <code id="trackCardMeta">BassBruh • 150 BPM • 3:12</code>
+          <span id="trackCardDesc">First song. A track by BassBruh — a friend of the game.</span>
         </div>
       </div>
       <div style="flex:1;min-width:220px">
@@ -188,6 +213,20 @@
       <div><b>Esc</b> pause</div>
     </div>
     <p class="fine" style="margin-top:14px">Free to play. Best scores are saved on this device. After every 3rd run you may see an ad — it keeps the game free, and it never interrupts a song.</p>
+  </div>
+</div>
+
+<!-- FREEPLAY — song grid on the black TRON grid background -->
+<div class="overlay gridBack hidden" id="freeplayScreen">
+  <div class="panel">
+    <h2 style="text-shadow:0 0 18px rgba(73,230,255,.45)">FREEPLAY</h2>
+    <p class="sub">Pick a song on the grid. SpeedDemon first — then the campaign theme, then your own songs. Arrow keys move, Enter plays, Esc goes back.</p>
+    <div class="songGrid" id="freeplayGrid"></div>
+    <div class="row">
+      <button class="primary" id="btnFreeplayPlay" style="font-size:18px;padding:14px 34px">▶ &nbsp;Play</button>
+      <button id="btnFreeplayBack">← Back to menu</button>
+      <span class="fine" id="freeplayStatus"></span>
+    </div>
   </div>
 </div>
 
@@ -321,6 +360,16 @@
     titleDiff: document.getElementById('titleDiff'),
     titleBest: document.getElementById('titleBest'),
     titleStatus: document.getElementById('titleStatus'),
+    trackCardTitle: document.getElementById('trackCardTitle'),
+    trackCardMeta: document.getElementById('trackCardMeta'),
+    trackCardDesc: document.getElementById('trackCardDesc'),
+    btnCampaign: document.getElementById('btnCampaign'),
+    btnFreeplay: document.getElementById('btnFreeplay'),
+    freeplayScreen: document.getElementById('freeplayScreen'),
+    freeplayGrid: document.getElementById('freeplayGrid'),
+    btnFreeplayPlay: document.getElementById('btnFreeplayPlay'),
+    btnFreeplayBack: document.getElementById('btnFreeplayBack'),
+    freeplayStatus: document.getElementById('freeplayStatus'),
     dropzone: document.getElementById('dropzone'),
     fileTitle: document.getElementById('fileTitle'),
     seedGrid: document.getElementById('seedGrid'),
@@ -472,6 +521,7 @@
       ui.hud.style.display = hudVisible ? 'block' : 'none';
     }
     if (isFormTarget(e)) return; // typing in a field: never treat keys as game input
+    if (freeplayKey(e)) return; // freeplay grid open: arrows move, Enter plays, Esc goes back
     if (e.code === 'Space'){ e.preventDefault(); toggleStartStop(); }
     if (e.code === 'Escape'){ togglePause(); }
     if (e.code.startsWith('Arrow')) e.preventDefault();
@@ -630,7 +680,7 @@
     ps: { square: 2, cross: 0, circle: 1, triangle: 3 }
   };
 
-  let songId = 'Neolution-Theme.mp3';
+  let songId = 'SpeedDemon.mp3';
   let songLabel = 'Neolution Theme';
   let customObjectUrl = null;
   let customFile = null; // the File behind a custom song (file input may be empty after drag-drop / shell upload)
@@ -894,6 +944,8 @@
     songId = ui.songSel.value;
     customFile = null;
     songLabel = ui.songSel.options[ui.songSel.selectedIndex] ? ui.songSel.options[ui.songSel.selectedIndex].textContent : songId;
+    freeplaySelected = songId;
+    updateTrackCard();
     // Only reload the media element when the song actually changed.
     // A seed/difficulty change rebuilds the chart, not the audio — this
     // avoids aborting an in-flight media load and re-buffering.
@@ -944,6 +996,13 @@
     await rebuildChartUsingDecodeIfPossible(file.name, file);
     unlockAchievement('custom-track');
     updateTitleBest();
+    // add the uploaded song to the freeplay grid (one card per file)
+    const mins = Math.floor((audioEl.duration || 0) / 60);
+    const secs = Math.floor((audioEl.duration || 0) % 60);
+    customSongs = [{ file: 'custom', title: file.name.replace(/\.[^.]+$/, ''), artist: 'Your upload', meta: `${mins}:${String(secs).padStart(2, '0')} • custom`, desc: 'Your song — it plays instantly and gets its own chart.' }];
+    freeplaySelected = 'custom';
+    updateTrackCard();
+    renderFreeplayGrid();
     setStatus(`Custom song loaded: ${file.name} — ${notes.length} notes. Press Play.`, true);
   }
 
@@ -1122,10 +1181,13 @@
   // --- overlays ---
   function hideOverlays(){
     ui.titleScreen.classList.add('hidden');
+    ui.freeplayScreen.classList.add('hidden');
     ui.resultsScreen.classList.add('hidden');
     ui.pauseScreen.classList.add('hidden');
     ui.adModal.classList.add('hidden');
     ui.storeScreen.classList.add('hidden');
+    // leaving any overlay (incl. the freeplay grid) restores the HUD
+    ui.hud.style.display = hudVisible ? 'block' : 'none';
   }
   function showTitle(){
     hideOverlays();
@@ -1138,6 +1200,168 @@
   }
   function showPause(){
     ui.pauseScreen.classList.remove('hidden');
+  }
+
+  // --- song list, freeplay grid, campaign entry ---
+  // Order matters: SpeedDemon first, then the Neolution Theme (campaign song).
+  // No campaign mode exists yet — the Campaign button plays the campaign song
+  // (the fixed Theme). The registry (assets/data/official_songs.json) is the
+  // source of truth when it loads; the embedded list is the fallback
+  // (e.g. file:// where fetch is blocked).
+  const BUILTIN_SONGS = [
+    { file: 'SpeedDemon.mp3', title: 'SpeedDemon', artist: 'BassBruh', meta: '3:12 • 150 BPM', desc: 'First song. A track by BassBruh — a friend of the game.', campaign: false },
+    { file: 'Neolution-Theme.mp3', title: 'Neolution Theme', artist: 'Neo-VECTR', meta: '2:00 • 128 BPM', desc: 'Built-in original track, synthesized for this game. The campaign song.', campaign: true },
+  ];
+  let builtinSongs = BUILTIN_SONGS.slice();
+  let customSongs = []; // user-uploaded songs, added as they load
+  let freeplaySelected = 'SpeedDemon.mp3';
+
+  // --- UI click sound (menu selection) ---
+  // Clean, subtle synthesized click: a short sine blip. No harsh harmonics,
+  // no audio file — built from the Web Audio API on demand.
+  let uiAudioCtx = null;
+  let uiClickCount = 0; // menu click sounds played (debug hook: state.uiClicks)
+  function uiAudio(){
+    if (!uiAudioCtx){
+      try{ uiAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(_){ return null; }
+    }
+    if (uiAudioCtx && uiAudioCtx.state === 'suspended') uiAudioCtx.resume().catch(()=>{});
+    return uiAudioCtx;
+  }
+  function playClick(){
+    uiClickCount++;
+    const ctx = uiAudio();
+    if (!ctx) return;
+    try{
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(1250, t);
+      g.gain.setValueAtTime(0.14, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.06);
+    }catch(_){ /* UI sound is best-effort */ }
+  }
+
+  function allFreeplaySongs(){ return builtinSongs.concat(customSongs); }
+  function songByFile(file){
+    if (file === 'custom') return customSongs[customSongs.length - 1] || null;
+    return allFreeplaySongs().find(s => s.file === file) || null;
+  }
+  function updateTrackCard(){
+    const s = songByFile(songId === 'custom' ? 'custom' : songId);
+    if (!s) return;
+    ui.trackCardTitle.textContent = '🎵 ' + s.title;
+    ui.trackCardMeta.textContent = (s.artist ? s.artist + ' • ' : '') + s.meta;
+    ui.trackCardDesc.textContent = s.desc || '';
+  }
+  function selectSong(file, opts){
+    const s = songByFile(file);
+    if (!s) return;
+    const changed = freeplaySelected !== file;
+    freeplaySelected = file;
+    if (file !== 'custom'){
+      songId = file;
+      if (ui.songSel) ui.songSel.value = file;
+    }
+    updateTrackCard();
+    renderFreeplayGrid();
+    if (changed && !(opts && opts.silent)) playClick();
+  }
+  function renderFreeplayGrid(){
+    const grid = ui.freeplayGrid;
+    if (!grid) return;
+    grid.innerHTML = '';
+    for (const s of allFreeplaySongs()){
+      const card = document.createElement('div');
+      const isSel = s.file === freeplaySelected || (s.file === 'custom' && songId === 'custom');
+      card.className = 'songCard' + (isSel ? ' selected' : '');
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      card.setAttribute('data-file', s.file);
+      const badge = s.campaign ? '<span class="badge">CAMPAIGN</span>' : '';
+      card.innerHTML = '<b></b><div class="songMeta"></div><span></span>' + badge;
+      card.querySelector('b').textContent = s.title;
+      card.querySelector('.songMeta').textContent = (s.artist ? s.artist + ' • ' : '') + s.meta;
+      card.querySelector('span').textContent = s.desc || '';
+      card.addEventListener('click', () => selectSong(s.file));
+      card.addEventListener('mouseenter', () => { if (freeplaySelected !== s.file) selectSong(s.file); });
+      card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); playFreeplaySelection(); } });
+      grid.appendChild(card);
+    }
+    // "Your Own Song" tile — same file picker as the main-menu dropzone
+    const custom = document.createElement('div');
+    custom.className = 'songCard';
+    custom.setAttribute('data-file', '__upload__');
+    custom.innerHTML = '<b>Your Own Song</b><div class="songMeta">MP3 / WAV / OGG — from your device</div><span>Pick any audio file. It plays instantly and gets its own chart — and a seed code you can share.</span>';
+    custom.addEventListener('click', () => { playClick(); ui.fileTitle.click(); });
+    grid.appendChild(custom);
+  }
+  function showFreeplay(){
+    hideOverlays();
+    renderFreeplayGrid();
+    ui.freeplayScreen.classList.remove('hidden');
+    // the grid background is transparent, so hide the HUD while the grid
+    // is open — otherwise its panel overlaps the FREEPLAY heading.
+    ui.hud.style.display = 'none';
+    updateTitleBest();
+  }
+  function hideFreeplay(){
+    ui.freeplayScreen.classList.add('hidden');
+    ui.hud.style.display = hudVisible ? 'block' : 'none';
+  }
+  async function playFreeplaySelection(){
+    playClick();
+    hideFreeplay();
+    try{
+      // load the selected song (dropdown change alone does not reload audio)
+      // — a custom song is already loaded, so skip the reload for it.
+      if (songId !== 'custom') await loadSongFromDropdown();
+      await toggleStartStop();
+    }
+    catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
+  }
+  async function loadSongRegistry(){
+    try{
+      const res = await fetch('assets/data/official_songs.json');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data) && data.length && data[0].file){
+        builtinSongs = data.filter(s => s.status === 'playable').map(s => ({
+          file: s.file, title: s.title, artist: s.artist || '',
+          meta: s.lengthLabel || '', desc: s.description || '', campaign: !!s.campaign
+        }));
+        if (!builtinSongs.some(s => s.file === freeplaySelected)) freeplaySelected = builtinSongs[0].file;
+        if (ui.songSel){
+          ui.songSel.innerHTML = '';
+          for (const s of builtinSongs){
+            const o = document.createElement('option');
+            o.value = s.file;
+            o.textContent = s.title + (s.artist ? ' — ' + s.artist : '') + (s.campaign ? ' (Campaign)' : '');
+            if (s.file === freeplaySelected) o.selected = true;
+            ui.songSel.appendChild(o);
+          }
+        }
+        renderFreeplayGrid();
+        updateTrackCard();
+      }
+    }catch(_){ /* file:// or offline: embedded list stays */ }
+  }
+  // Freeplay keyboard: arrows move, Enter/Space plays, Esc goes back.
+  function freeplayKey(e){
+    if (ui.freeplayScreen.classList.contains('hidden')) return false;
+    const songs = allFreeplaySongs();
+    const idx = Math.max(0, songs.findIndex(s => s.file === freeplaySelected));
+    const cols = Math.max(1, Math.floor((ui.freeplayGrid.clientWidth || 600) / 224));
+    if (e.key === 'ArrowRight'){ e.preventDefault(); selectSong(songs[Math.min(songs.length - 1, idx + 1)].file); return true; }
+    if (e.key === 'ArrowLeft'){ e.preventDefault(); selectSong(songs[Math.max(0, idx - 1)].file); return true; }
+    if (e.key === 'ArrowDown'){ e.preventDefault(); selectSong(songs[Math.min(songs.length - 1, idx + cols)].file); return true; }
+    if (e.key === 'ArrowUp'){ e.preventDefault(); selectSong(songs[Math.max(0, idx - cols)].file); return true; }
+    if (e.key === 'Enter' || e.code === 'Space'){ e.preventDefault(); playFreeplaySelection(); return true; }
+    if (e.key === 'Escape'){ e.preventDefault(); hideFreeplay(); showTitle(); return true; }
+    return false;
   }
 
   // --- AdSense: an ad after every Nth completed run, between runs only ---
@@ -1871,6 +2095,21 @@
     syncTitleDiff();
     if (!chartBuilding) loadSongFromDropdown().catch(err => setError(err.message || err));
   });
+  // --- main menu: Campaign (the entry) + Freeplay (the song grid) ---
+  // Campaign plays the campaign song (the fixed Neolution Theme). There is
+  // no campaign mode yet — this is the campaign entry point, not a mode.
+  ui.btnCampaign.addEventListener('click', async () => {
+    playClick();
+    selectSong('Neolution-Theme.mp3', { silent: true });
+    try{
+      await loadSongFromDropdown();
+      await toggleStartStop();
+    }
+    catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
+  });
+  ui.btnFreeplay.addEventListener('click', () => { playClick(); showFreeplay(); });
+  ui.btnFreeplayBack.addEventListener('click', () => { playClick(); hideFreeplay(); showTitle(); });
+  ui.btnFreeplayPlay.addEventListener('click', () => playFreeplaySelection());
   ui.playBtn.addEventListener('click', async () => {
     try{ await toggleStartStop(); }
     catch(e){ setError('audio error — ' + (e && e.message ? e.message : 'see console')); console.error(e); }
@@ -1968,6 +2207,9 @@
   syncTitleDiff();
   renderSeedGrid();
   loadSeedCatalog();
+  renderFreeplayGrid();
+  updateTrackCard();
+  loadSongRegistry();
   if (currentSeedCode){
     ui.seedLbl.textContent = 'seed: ' + seedCodeForDisplay(currentSeedCode);
     ui.seedInput.value = seedCodeForDisplay(currentSeedCode);
@@ -2016,7 +2258,7 @@
         chartReady, notes: notes.map(n => ({ t: n.t, lane: n.lane, hit: n.hit, miss: n.miss })),
         score, combo, maxCombo, counts: { ...counts }, accuracy: accuracy(),
         seedCode: seedCodeForDisplay(currentSeedCode), audioTime: audioEl.currentTime,
-        duration: audioEl.duration, adRuns,
+        duration: audioEl.duration, adRuns, uiClicks: uiClickCount,
         iap: { configured: IAP.isConfigured(), items: IAP.items().length, owned: Object.keys(IAP.purchases) }
       };
     },

@@ -12,5 +12,7 @@ build/
 .idea/
 .sublime-project
 .sublime-workspace
-# Test-only assets (never shipped): SpeedDemon.wav is the TEST SONG only.
+# Test-only assets (never shipped as WAV): SpeedDemon.wav is the 70 MB
+# float-WAV source for the first song. The release ships SpeedDemon.mp3
+# (encoded from it); the WAV stays here for testing only.
 test-assets/
