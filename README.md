@@ -76,6 +76,16 @@ With both left blank (the default while AdSense is in admission), no ad script i
 
 ---
 
+## In-app purchases (IAP-ready)
+
+Neolution is **free** — the whole game is playable with nothing purchased. The store is ready for the day Gary decides what is sold: the catalog lives in `assets/data/iap_catalog.json` (currently empty — no items, no provider wired), the game exposes it through the `IAP` module in `index.html` (`IAP.items()`, `IAP.owns(id)`, `IAP.purchase(id)`), and both the title screen and the release shell render a Store from that same catalog. With no provider configured, a purchase attempt is refused and grants nothing — the seam is inert by design, and nothing in the game is gated behind a purchase.
+
+Items are `{ id, name, description, priceUsd, kind }` — `kind` is free-form (song, theme, pack, …) until Gary picks the items. Owned purchases persist in localStorage under `purchases.v1`.
+
+**SpeedDemon is the test song only.** `SpeedDemon.wav` (the original default track) is used for development and testing — it lives in `test-assets/` (git-ignored, never committed) and is **never bundled in a release build**: `tools/build-itch.sh` fails the build if it appears in `dist/`. The release defaults to user-uploaded songs plus the synthesized Neolution Theme above.
+
+---
+
 ## Project structure
 
 ```text
@@ -84,14 +94,17 @@ Neolution/
 ├── Neolution-Theme.mp3           # Built-in original track (2.9 MB)
 ├── assets/data/
 │   ├── official_songs.json       # Song registry (built-in track)
-│   └── seed_catalog.json         # Curated chart seed catalog
+│   ├── seed_catalog.json         # Curated chart seed catalog
+│   └── iap_catalog.json          # In-app purchase catalog (empty until Gary decides the items)
 ├── release/
 │   └── Neolution_SteamVerticalSlice.html   # Menu shell (desktop/Steam path)
 ├── src/ui/
 │   └── release_shell.js          # The shell's JS (menu, songs, settings, achievements, results, ads)
 ├── tools/
 │   ├── generate-theme-track.js   # Synthesizes the built-in track from code
-│   └── build-itch.sh             # Assembles the itch-ready build in dist/itch/
+│   ├── build-itch.sh             # Assembles the itch-ready build in dist/itch/
+│   └── verify-build.py           # Headless Playwright verification of the build
+├── test-assets/                  # Test-only assets (SpeedDemon.wav, the test song — never shipped)
 ├── desktop/                      # Electron wrapper scaffold (loads the release shell)
 └── docs/                         # Steam-readiness planning docs
 ```
@@ -147,9 +160,11 @@ The desktop folder contains a starter Electron wrapper for turning the current b
 - Release shell restored (menu, songs, settings, achievements, results, ads)
 - Original built-in track (synthesized, clean provenance)
 - AdSense break after every 3rd run (configurable, graceful when unconfigured)
+- In-app purchases: IAP-ready seam (empty catalog, inert until configured)
 - Itch-ready build (~3 MB)
 
 ### Next
+- In-app purchase items (Gary's decision: what is sold)
 - Official song pack structure (more built-in tracks)
 - Handcrafted charts (in addition to generated ones)
 - Calibration mini-flow

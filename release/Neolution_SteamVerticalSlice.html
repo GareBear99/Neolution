@@ -89,6 +89,7 @@ hr{border:none;border-top:1px solid rgba(87,232,255,.16);margin:18px 0}
             <button class="gold" id="songSelectBtn">Song Select</button>
             <button class="ghost" id="settingsBtn">Settings</button>
             <button class="ghost" id="achievementsBtn">Achievements</button>
+            <button class="ghost" id="storeBtn">Store</button>
           </div>
           <div class="footerNote">This shell is built to sit on top of the existing browser game while preserving the original prototype loop.</div>
         </div>
@@ -155,6 +156,16 @@ hr{border:none;border-top:1px solid rgba(87,232,255,.16);margin:18px 0}
       <p class="panelSub">Local milestone layer for progression and future Steam achievement mapping.</p>
       <div id="achievementList" class="cardGrid"></div>
       <div class="actions"><button class="ghost" data-back>Back</button></div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="storeOverlay">
+    <div class="screen">
+      <h2 class="panelTitle">Store</h2>
+      <p class="panelSub" id="storeSub">The store is coming soon.</p>
+      <div id="storeGrid" class="songGrid"></div>
+      <div class="actions"><button class="ghost" data-back>Back</button></div>
+      <p class="footerNote">Neolution is free — everything here is playable now. Purchases will appear here when they are ready.</p>
     </div>
   </div>
 

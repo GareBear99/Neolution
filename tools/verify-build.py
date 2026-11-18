@@ -8,9 +8,13 @@ Serves dist/itch/ on localhost, drives it in headless Chromium, and checks:
      score/combo/accuracy move; judgement tiers register.
   4. Seed determinism: same code twice -> identical chart (note count + first 20 notes).
   5. Custom song upload: upload a real audio file, chart rebuilds, plays.
+  5b. Test song: upload test-assets/SpeedDemon.wav (test-only, never
+     bundled) — chart rebuilds and plays.
   6. Results: seek near the end -> results screen with rank/accuracy/counts.
   7. Ad break: with adRuns preset to 2, the run's end shows the ad modal
      (support fallback, since no publisher ID is configured); Continue closes it.
+  7b. Store (IAP seam): panel renders coming-soon on an empty catalog;
+     purchase attempts are refused and grant nothing.
   8. Release shell: Play launches the game in the iframe; Menu returns;
      song select renders; results flow through postMessage.
   9. Screenshots at each stage for a visual check.
@@ -111,16 +115,20 @@ def main():
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
                         "-i", "sine=frequency=440:duration=10",
                         "-af", "volume=0.5", tone], check=True)
+    # SpeedDemon.wav is the TEST SONG only (never bundled): upload it as a
+    # custom song to prove the flow handles a real, long, large track.
+    speed = os.path.join(REPO, "test-assets", "SpeedDemon.wav")
     httpd = serve(args.port)
     base = f"http://127.0.0.1:{args.port}"
 
     driver = r'''
-import json, sys, time
+import json, os, sys, time
 from playwright.sync_api import sync_playwright
 
 BASE = sys.argv[1]
 OUT = sys.argv[2]
 TONE = sys.argv[3]
+SPEED = sys.argv[4] if len(sys.argv) > 4 else ""
 results = []
 def check(name, ok, detail=""):
     results.append((name, bool(ok), str(detail)))
@@ -244,6 +252,23 @@ with sync_playwright() as p:
           f"{st['song'] if st else ''} — {len(st['notes']) if st else 0} notes")
     page.screenshot(path=OUT + "/03-custom-song.png")
 
+    # ---- 4b. test song (SpeedDemon.wav — test-only, never bundled) ----
+    if SPEED and os.path.exists(SPEED):
+        prev_sig = sig_of(page.evaluate("() => window.__neolution.state"))
+        page.set_input_files("#fileTitle", SPEED)
+        deadline = time.time() + 90
+        st = None
+        while time.time() < deadline:
+            st = page.evaluate("() => window.__neolution.state")
+            if st and st["chartReady"] and st["song"].endswith(".wav") and sig_of(st) != prev_sig:
+                break
+            page.wait_for_timeout(500)
+        check("test song (SpeedDemon.wav) uploads + charts", st and st["chartReady"] and st["song"].endswith(".wav"),
+              f"{st['song'] if st else ''} — {len(st['notes']) if st else 0} notes")
+        page.screenshot(path=OUT + "/03b-speeddemon.png")
+    else:
+        check("test song (SpeedDemon.wav) present", False, "test-assets/SpeedDemon.wav missing")
+
     # ---- 5. results screen (seek near end, AFTER playback starts) ----
     page.click("#btnPlay")
     page.wait_for_timeout(800)
@@ -287,6 +312,26 @@ with sync_playwright() as p:
     page.wait_for_timeout(300)
     check("ad Continue closes the modal", not page.is_visible("#adModal"))
 
+    # ---- 6b. store (IAP seam, empty catalog) ----
+    page.goto(BASE + "/index.html", wait_until="networkidle")
+    page.wait_for_timeout(1500)
+    page.click("#btnStore")
+    page.wait_for_timeout(500)
+    check("store panel opens", page.is_visible("#storeScreen"))
+    store_text = page.text_content("#storeSub")
+    check("store shows coming-soon (empty catalog)", store_text and "coming soon" in store_text.lower(), store_text)
+    check("store lists no items (empty catalog)", page.locator("#storeItems > *").count() == 0)
+    iap = page.evaluate("() => window.__neolution.state.iap")
+    check("IAP seam inert (not configured, 0 items)", iap and not iap["configured"] and iap["items"] == 0, iap)
+    res = page.evaluate("() => window.__neolution.purchase('no-such-item')")
+    check("purchase of unknown item is refused", res and not res["ok"], res)
+    iap2 = page.evaluate("() => window.__neolution.state.iap")
+    check("refused purchase grants nothing", iap2 and iap2["owned"] == [], iap2)
+    page.click("#btnStoreClose")
+    page.wait_for_timeout(300)
+    check("store closes back to title", page.is_visible("#titleScreen"))
+    page.screenshot(path=OUT + "/05b-store.png")
+
     # ---- 7. release shell ----
     page.goto(BASE + "/release/Neolution_SteamVerticalSlice.html", wait_until="networkidle")
     page.wait_for_timeout(2000)
@@ -319,9 +364,14 @@ with sync_playwright() as p:
     # the previous song's pending stream when the player switches songs —
     # normal media-element behaviour, not a failed load. A genuinely
     # missing file would surface as an HTTP 4xx response instead.
-    audio_aborts = [f for f in failed_req if "net::ERR_ABORTED" in f and any(f.split(" :: ")[0].endswith(ext) for ext in (".mp3", ".wav", ".ogg", ".m4a", ".flac"))]
+    # The same applies to blob: URLs: a custom song's object URL is
+    # revoked when the next song loads (or the page navigates), which
+    # aborts the in-flight blob stream.
+    audio_aborts = [f for f in failed_req if "net::ERR_ABORTED" in f and
+                    ("blob:" in f.split(" :: ")[0] or
+                     any(f.split(" :: ")[0].endswith(ext) for ext in (".mp3", ".wav", ".ogg", ".m4a", ".flac")))]
     real_failures = [f for f in failed_req if f not in audio_aborts]
-    check("no failed requests (ignoring benign audio-stream aborts on song switch)", len(real_failures) == 0, real_failures[:3])
+    check("no failed requests (ignoring benign audio/blob-stream aborts on song switch)", len(real_failures) == 0, real_failures[:3])
     check("no HTTP error responses", len(bad_responses) == 0, bad_responses[:3])
     browser.close()
 
@@ -332,7 +382,7 @@ sys.exit(1 if fails else 0)
     driver_path = os.path.join(args.out, "driver.py")
     open(driver_path, "w").write(driver)
     env = dict(os.environ, PLAYWRIGHT_BROWSERS_PATH=os.path.expanduser("~/.cache/ms-playwright"))
-    r = subprocess.run([PLAYWRIGHT_PYTHON, driver_path, base, args.out, tone],
+    r = subprocess.run([PLAYWRIGHT_PYTHON, driver_path, base, args.out, tone, speed],
                        env=env, capture_output=False)
     httpd.shutdown()
     sys.exit(r.returncode)

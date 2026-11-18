@@ -12,3 +12,5 @@ build/
 .idea/
 .sublime-project
 .sublime-workspace
+# Test-only assets (never shipped): SpeedDemon.wav is the TEST SONG only.
+test-assets/

@@ -67,7 +67,7 @@
   }
 
   // --- screens ---
-  const overlays = ['menuOverlay', 'songOverlay', 'settingsOverlay', 'achievementsOverlay', 'resultsOverlay'];
+  const overlays = ['menuOverlay', 'songOverlay', 'settingsOverlay', 'achievementsOverlay', 'storeOverlay', 'resultsOverlay'];
   function showScreen(id) {
     for (const o of overlays) $(o).classList.add('hidden');
     if (id) $(id).classList.remove('hidden');
@@ -269,6 +269,44 @@
     }
   }
 
+  // --- store (IAP seam: same catalog as the game; empty until Gary decides the items) ---
+  let iapCatalog = { version: 1, provider: null, currency: 'USD', items: [] };
+  async function loadIapCatalog() {
+    try {
+      const res = await fetch('../assets/data/iap_catalog.json');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && Array.isArray(data.items)) iapCatalog = data;
+    } catch (_) { /* file:// or offline: empty catalog stays */ }
+  }
+  function renderStore() {
+    const grid = $('storeGrid');
+    const owned = store.get('purchases.v1', {});
+    const items = iapCatalog.items || [];
+    $('storeSub').textContent = items.length
+      ? 'Support Neolution — these extras are optional. The game itself is free and fully playable.'
+      : 'The store is coming soon. Neolution is free — everything here is playable right now.';
+    grid.innerHTML = '';
+    for (const item of items) {
+      const isOwned = !!owned[item.id];
+      const card = document.createElement('div');
+      card.className = 'songCard';
+      card.style.cursor = 'default';
+      card.innerHTML = '<h3 style="margin:0 0 4px"></h3><div class="songMeta"></div><div style="margin-top:8px;color:var(--muted);font-size:13px"></div>';
+      card.querySelector('h3').textContent = item.name;
+      card.querySelector('.songMeta').textContent = (item.priceUsd != null ? '$' + Number(item.priceUsd).toFixed(2) : '') + (isOwned ? ' • OWNED' : '');
+      card.querySelectorAll('div')[1].textContent = item.description || '';
+      if (!isOwned) {
+        const btn = document.createElement('button');
+        btn.textContent = 'Buy';
+        btn.style.marginTop = '10px';
+        btn.addEventListener('click', () => toast('Purchases aren\u2019t available yet — the store is coming soon.'));
+        card.appendChild(btn);
+      }
+      grid.appendChild(card);
+    }
+  }
+
   // --- settings ---
   function loadSettingsIntoForm() {
     const profile = store.get('profile.v1', {});
@@ -303,6 +341,7 @@
   $('songSelectBtn').addEventListener('click', () => { renderSongGrid(); showScreen('songOverlay'); });
   $('settingsBtn').addEventListener('click', () => { loadSettingsIntoForm(); showScreen('settingsOverlay'); });
   $('achievementsBtn').addEventListener('click', () => { renderAchievements(); showScreen('achievementsOverlay'); });
+  $('storeBtn').addEventListener('click', async () => { await loadIapCatalog(); renderStore(); showScreen('storeOverlay'); });
   $('launchSongBtn').addEventListener('click', () => {
     selectedDifficulty = parseInt($('difficultySelect').value, 10) || 1;
     selectedOffset = parseInt($('offsetRange').value, 10) || 0;
@@ -342,6 +381,7 @@
   $('offsetBadge').textContent = (selectedOffset >= 0 ? '+' : '') + selectedOffset + ' ms';
   renderSongGrid();
   loadSongRegistry();
+  loadIapCatalog();
   refreshMenuStats();
   showMenu();
 })();
